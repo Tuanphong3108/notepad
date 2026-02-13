@@ -15,6 +15,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- DOMPurify để chống XSS như ChatGPT yêu cầu -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
     
     <style>
         :root {
@@ -22,6 +24,7 @@
             --md-sys-color-on-primary: #FFFFFF;
             --md-sys-color-surface: #FEF7FF;
             --md-sys-color-surface-container: #F3EDF7;
+            --md-sys-color-surface-container-high: #ECE6F0;
             --md-sys-color-outline: #79747E;
             --md-sys-color-error: #B3261E;
             --md-sys-color-state-layer: rgba(103, 80, 164, 0.12);
@@ -41,8 +44,8 @@
             user-select: none;
         }
 
-        /* --- Custom Context Menu --- */
-        #contextMenu {
+        /* --- Menu & Overlay --- */
+        #contextMenu, #moreOptionsMenu {
             position: fixed;
             display: none;
             background: var(--md-sys-color-surface-container);
@@ -72,24 +75,10 @@
             color: #1D1B20;
         }
 
-        .menu-item:hover:not(.disabled) { 
-            background: var(--md-sys-color-state-layer); 
-        }
-        
-        .menu-item:hover:not(.disabled) .material-symbols-outlined {
-            font-variation-settings: 'FILL' 1;
-        }
-
-        .menu-item.disabled {
-            opacity: 0.38;
-            cursor: default;
-            pointer-events: none;
-        }
-
-        .menu-item .material-symbols-outlined { 
-            font-size: 20px; 
-            transition: font-variation-settings 0.2s;
-        }
+        .menu-item:hover:not(.disabled) { background: var(--md-sys-color-state-layer); }
+        .menu-item:hover:not(.disabled) .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+        .menu-item.disabled { opacity: 0.38; cursor: default; pointer-events: none; }
+        .menu-item .material-symbols-outlined { font-size: 20px; transition: font-variation-settings 0.2s; }
 
         /* --- Header & Brand --- */
         .app-header {
@@ -100,7 +89,6 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
             z-index: 10;
         }
 
@@ -130,7 +118,6 @@
         .action-btn.primary { background-color: #EADDFF; color: #21005D; }
         .action-label { font-size: 14px; font-weight: 700; opacity: 0; transition: opacity 0.3s; }
         .action-btn:hover:not(.disabled) .action-label { opacity: 1; }
-        
         .action-btn.disabled { opacity: 0.38; cursor: default; }
 
         /* --- MD3 Switch Overshoot --- */
@@ -153,18 +140,63 @@
         input:checked + .slider { background-color: var(--md-sys-color-primary); border-color: var(--md-sys-color-primary); }
         input:checked + .slider:before { content: "check"; transform: translateX(20px); background-color: var(--md-sys-color-on-primary); color: var(--md-sys-color-primary); }
 
+        /* --- Find & Replace Bar --- */
+        #findReplaceBar {
+            display: none;
+            background-color: var(--md-sys-color-surface-container-high);
+            padding: 8px 24px;
+            gap: 12px;
+            align-items: center;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            animation: slideDown 0.3s cubic-bezier(0, 0, 0.2, 1);
+            flex-wrap: wrap;
+        }
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+        
+        .fr-input-container {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 28px;
+            padding: 0 16px;
+            height: 48px;
+            border: 1px solid var(--md-sys-color-outline);
+            flex: 1;
+            min-width: 200px;
+            transition: border 0.2s;
+        }
+        .fr-input-container:focus-within { border-color: var(--md-sys-color-primary); border-width: 2px; }
+        .fr-input { border: none; outline: none; flex: 1; font-size: 14px; padding: 0 8px; background: transparent; }
+
         /* --- Editor --- */
-        #editorArea { display: flex; flex-grow: 1; overflow: hidden; background: white; }
+        #editorArea { display: flex; flex-grow: 1; overflow: hidden; background: white; position: relative; }
+        
+        /* Container mới để bọc textarea và lớp highlight giả */
+        .editor-wrapper { position: relative; flex: 1; display: flex; overflow: hidden; }
+        
         #noteContent {
             flex: 1; padding: 40px; outline: none; border: none; resize: none;
             font-family: 'Google Sans Code', 'Consolas', monospace;
             font-size: 1rem; line-height: 1.8; color: #1D1B20; overflow-y: auto;
+            background: transparent; z-index: 2; position: relative;
             border-right: 1px solid rgba(0,0,0,0.05); user-select: text;
         }
+
+        /* Lớp highlight cho search giống VS Code */
+        #searchHighlights {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            padding: 40px; pointer-events: none; white-space: pre-wrap; word-wrap: break-word;
+            font-family: 'Google Sans Code', 'Consolas', monospace;
+            font-size: 1rem; line-height: 1.8; color: transparent; overflow: hidden;
+            z-index: 1;
+        }
+        #searchHighlights mark { background-color: rgba(255, 235, 59, 0.4); color: transparent; border-bottom: 2px solid orange; }
+        #searchHighlights mark.current { background-color: rgba(255, 152, 0, 0.6); border-bottom: 2px solid red; }
+
         #previewPane { flex: 1; padding: 40px; overflow-y: auto; background-color: var(--md-sys-color-surface); display: none; user-select: text; }
         #previewPane.active { display: block; }
 
-        /* Rendered Markdown Styling */
+        /* Markdown Styles */
         .markdown-body h1 { font-size: 2.25rem; font-weight: 900; color: var(--md-sys-color-primary); border-bottom: 2px solid var(--md-sys-color-outline); margin-bottom: 1rem; }
         .markdown-body strong { font-weight: 1000; color: #000; }
         .markdown-body pre { background: #1D1B20; color: #F4EFF4; padding: 1rem; border-radius: 12px; }
@@ -182,45 +214,44 @@
         <div class="menu-item" onclick="handleMenuAction('undo')"><span class="material-symbols-outlined">undo</span>Hoàn tác</div>
         <div class="menu-item" onclick="handleMenuAction('redo')"><span class="material-symbols-outlined">redo</span>Làm lại</div>
         <hr class="my-1 border-black/5">
-        <div class="menu-item" onclick="handleMenuAction('save')"><span class="material-symbols-outlined">save</span>Lưu tệp</div>
-        <div class="menu-item" onclick="handleMenuAction('save-as')"><span class="material-symbols-outlined">save_as</span>Lưu bản mới</div>
-        <div class="menu-item" onclick="handleMenuAction('new')"><span class="material-symbols-outlined">note_add</span>Tạo tệp mới</div>
-        <div class="menu-item" onclick="handleMenuAction('open')"><span class="material-symbols-outlined">file_open</span>Mở tệp</div>
+        <div class="menu-item" onclick="toggleFindReplace()"><span class="material-symbols-outlined">search</span>Tìm kiếm & Thay thế</div>
         <hr class="my-1 border-black/5">
-        <div id="ctx-cut" class="menu-item" onclick="handleMenuAction('cut')"><span class="material-symbols-outlined">content_cut</span>Cắt</div>
-        <div id="ctx-copy" class="menu-item" onclick="handleMenuAction('copy')"><span class="material-symbols-outlined">content_copy</span>Sao chép</div>
+        <div class="menu-item" onclick="handleMenuAction('cut')"><span class="material-symbols-outlined">content_cut</span>Cắt</div>
+        <div class="menu-item" onclick="handleMenuAction('copy')"><span class="material-symbols-outlined">content_copy</span>Sao chép</div>
         <div class="menu-item" onclick="handleMenuAction('paste')"><span class="material-symbols-outlined">content_paste</span>Dán</div>
         <div class="menu-item" onclick="handleMenuAction('select-all')"><span class="material-symbols-outlined">select_all</span>Chọn tất cả</div>
     </div>
 
+    <!-- More Options Menu -->
+    <div id="moreOptionsMenu">
+        <div class="menu-item" onclick="handleMenuAction('undo')"><span class="material-symbols-outlined">undo</span>Hoàn tác <span class="ml-auto text-[10px] opacity-50">Ctrl+Z</span></div>
+        <div class="menu-item" onclick="handleMenuAction('redo')"><span class="material-symbols-outlined">redo</span>Làm lại <span class="ml-auto text-[10px] opacity-50">Ctrl+Y</span></div>
+        <hr class="my-1 border-black/5">
+        <div class="menu-item" onclick="handleMenuAction('cut')"><span class="material-symbols-outlined">content_cut</span>Cắt <span class="ml-auto text-[10px] opacity-50">Ctrl+X</span></div>
+        <div class="menu-item" onclick="handleMenuAction('copy')"><span class="material-symbols-outlined">content_copy</span>Sao chép <span class="ml-auto text-[10px] opacity-50">Ctrl+C</span></div>
+        <div class="menu-item" onclick="handleMenuAction('paste')"><span class="material-symbols-outlined">content_paste</span>Dán <span class="ml-auto text-[10px] opacity-50">Ctrl+V</span></div>
+        <div class="menu-item" onclick="handleMenuAction('select-all')"><span class="material-symbols-outlined">select_all</span>Chọn tất cả <span class="ml-auto text-[10px] opacity-50">Ctrl+A</span></div>
+        <hr class="my-1 border-black/5">
+        <div class="menu-item" onclick="toggleFindReplace()"><span class="material-symbols-outlined">search</span>Tìm kiếm & Thay thế <span class="ml-auto text-[10px] opacity-50">Ctrl+F</span></div>
+    </div>
+
     <header class="app-header">
         <div class="flex items-center gap-2 overflow-hidden flex-shrink-0">
-            <div id="brandLogo" class="flex items-center text-[#6750A4]">
+            <div id="brandLogo" class="flex items-center text-[#6750A4] mr-2">
                 <span id="brandIcon" class="material-symbols-outlined text-3xl flex-shrink-0 mr-2">description</span>
                 <span id="brandText" class="font-black text-xl tracking-tight">Notepad</span>
             </div>
             
-            <div class="flex items-center gap-1 ml-2">
-                <button onclick="handleMenuAction('undo')" title="Hoàn tác" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">undo</span></button>
-                <button onclick="handleMenuAction('redo')" title="Làm lại" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">redo</span></button>
-                <div class="w-[1px] h-4 bg-black/5 mx-1"></div>
-                <button onclick="handleMenuAction('cut')" title="Cắt" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">content_cut</span></button>
-                <button onclick="handleMenuAction('copy')" title="Sao chép" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">content_copy</span></button>
-                <button onclick="handleMenuAction('paste')" title="Dán" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">content_paste</span></button>
-                <button onclick="handleMenuAction('select-all')" title="Chọn tất cả" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">select_all</span></button>
+            <div class="flex items-center gap-1">
+                <button onclick="newFile()" class="action-btn text-[#B3261E]"><span class="material-symbols-outlined">note_add</span><span class="action-label">Tạo tệp mới</span></button>
+                <button onclick="openFile()" class="action-btn"><span class="material-symbols-outlined">file_open</span><span class="action-label">Mở tệp</span></button>
+                <button id="mainSaveBtn" onclick="saveFile()" class="action-btn primary hidden"><span class="material-symbols-outlined">save</span><span class="action-label">Lưu tệp</span></button>
+                <button id="saveAsBtn" onclick="saveFileAs()" class="action-btn primary"><span class="material-symbols-outlined">save_as</span><span class="action-label">Lưu bản mới</span></button>
             </div>
 
-            <div class="header-options flex items-center gap-3">
-                <div id="autoSaveContainer" class="hidden items-center gap-2">
-                    <label class="switch"><input type="checkbox" id="autoSaveToggle"><span class="slider"></span></label>
-                    <span class="text-[10px] font-black uppercase text-[#21005D]">Auto Save</span>
-                </div>
-                <div class="flex items-center gap-2">
-                    <label class="switch"><input type="checkbox" id="spellCheckToggle" checked><span class="slider"></span></label>
-                    <span class="text-[10px] font-black uppercase text-[#21005D]">Spellcheck</span>
-                </div>
-                <div id="saveStatus" class="text-[#381E72] opacity-0 transition-opacity"><span class="material-symbols-outlined text-lg">sync_saved_locally</span></div>
-            </div>
+            <div class="w-[1px] h-6 bg-black/10 mx-2"></div>
+
+            <input type="text" id="noteTitle" placeholder="Không tên" class="bg-transparent text-sm font-bold outline-none border-none text-left w-24 sm:w-32 lg:w-48 placeholder:text-black/30 border-b border-transparent focus:border-black/10 transition-colors" autocomplete="off">
         </div>
 
         <div id="mdToolbar" class="hidden sm:flex items-center gap-0.5 bg-[#F7F2FA] px-2 py-1 rounded-full border border-black/5 opacity-0 transition-all">
@@ -230,20 +261,50 @@
             <button onclick="insertMD('`', '`')" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">code</span></button>
         </div>
 
-        <div class="flex items-center gap-2 flex-shrink-0">
-            <div class="flex flex-col items-end">
-                <input type="text" id="noteTitle" placeholder="Không tên" class="bg-transparent text-sm font-bold outline-none border-none text-right w-24 sm:w-32 lg:w-48 placeholder:text-black/30 border-b border-transparent focus:border-black/10 transition-colors" autocomplete="off">
+        <div class="flex items-center gap-3 flex-shrink-0">
+            <div id="saveStatus" class="text-[#381E72] opacity-0 transition-opacity"><span class="material-symbols-outlined text-lg">sync_saved_locally</span></div>
+            
+            <div class="flex items-center gap-3">
+                <div id="autoSaveContainer" class="hidden items-center gap-2">
+                    <label class="switch"><input type="checkbox" id="autoSaveToggle"><span class="slider"></span></label>
+                    <span class="hidden md:inline text-[10px] font-black uppercase text-[#21005D]">Auto Save</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="switch"><input type="checkbox" id="spellCheckToggle" checked><span class="slider"></span></label>
+                    <span class="hidden md:inline text-[10px] font-black uppercase text-[#21005D]">Spellcheck</span>
+                </div>
             </div>
-            <div class="w-[1px] h-6 bg-black/10 mx-1"></div>
-            <button onclick="openFile()" class="action-btn"><span class="material-symbols-outlined">file_open</span><span class="action-label">Mở tệp</span></button>
-            <button id="mainSaveBtn" onclick="saveFile()" class="action-btn primary hidden"><span class="material-symbols-outlined">save</span><span class="action-label">Lưu tệp</span></button>
-            <button id="saveAsBtn" onclick="saveFileAs()" class="action-btn primary"><span class="material-symbols-outlined">save_as</span><span class="action-label">Lưu bản mới</span></button>
-            <button onclick="newFile()" class="action-btn danger text-[#B3261E]"><span class="material-symbols-outlined">note_add</span><span class="action-label">Tạo tệp mới</span></button>
+
+            <div class="w-[1px] h-6 bg-black/10"></div>
+
+            <button id="moreOptionsBtn" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">more_vert</span></button>
         </div>
     </header>
 
+    <!-- Find & Replace Bar -->
+    <div id="findReplaceBar">
+        <div class="fr-input-container">
+            <span class="material-symbols-outlined text-black/50">search</span>
+            <input type="text" id="findInput" class="fr-input" placeholder="Tìm kiếm...">
+            <span id="findCount" class="text-[10px] font-bold text-black/40 mr-2">0/0</span>
+            <button onclick="findNext(false)" class="p-1 hover:bg-black/5 rounded-full" title="Trước đó"><span class="material-symbols-outlined text-lg">keyboard_arrow_up</span></button>
+            <button onclick="findNext(true)" class="p-1 hover:bg-black/5 rounded-full" title="Tiếp theo"><span class="material-symbols-outlined text-lg">keyboard_arrow_down</span></button>
+        </div>
+        <div class="fr-input-container">
+            <span class="material-symbols-outlined text-black/50">find_replace</span>
+            <input type="text" id="replaceInput" class="fr-input" placeholder="Thay thế bằng...">
+            <button onclick="replaceOne()" class="text-[10px] font-black uppercase px-2 py-1 hover:bg-black/5 rounded" title="Thay thế mục hiện tại">Thay thế</button>
+            <button onclick="replaceAll()" class="text-[10px] font-black uppercase px-2 py-1 hover:bg-black/5 rounded" title="Thay thế tất cả">Tất cả</button>
+        </div>
+        <button onclick="toggleFindReplace()" class="p-2 hover:bg-black/5 rounded-full" title="Đóng (Esc)"><span class="material-symbols-outlined">close</span></button>
+    </div>
+
     <main id="editorArea">
-        <textarea id="noteContent" spellcheck="true" placeholder="Bắt đầu viết điều gì đó vĩ đại..."></textarea>
+        <div class="editor-wrapper">
+            <!-- Lớp highlight để tạo trải nghiệm giống editor chuyên nghiệp -->
+            <div id="searchHighlights"></div>
+            <textarea id="noteContent" spellcheck="true" placeholder="Bắt đầu viết điều gì đó vĩ đại..."></textarea>
+        </div>
         <div id="previewPane" class="markdown-body"></div>
     </main>
 
@@ -255,125 +316,254 @@
 
     <script>
         const contentInput = document.getElementById('noteContent');
+        const searchHighlights = document.getElementById('searchHighlights');
         const previewPane = document.getElementById('previewPane');
         const contextMenu = document.getElementById('contextMenu');
+        const moreOptionsMenu = document.getElementById('moreOptionsMenu');
+        const moreOptionsBtn = document.getElementById('moreOptionsBtn');
         const brandLogo = document.getElementById('brandLogo');
         const titleInput = document.getElementById('noteTitle');
         const mainSaveBtn = document.getElementById('mainSaveBtn');
         const autoSaveToggle = document.getElementById('autoSaveToggle');
         const autoSaveContainer = document.getElementById('autoSaveContainer');
+        const spellCheckToggle = document.getElementById('spellCheckToggle');
         const toast = document.getElementById('toast');
         const mdToolbar = document.getElementById('mdToolbar');
         const saveStatus = document.getElementById('saveStatus');
         const loading = document.getElementById('loading');
         
-        const ctxCut = document.getElementById('ctx-cut');
-        const ctxCopy = document.getElementById('ctx-copy');
+        const findReplaceBar = document.getElementById('findReplaceBar');
+        const findInput = document.getElementById('findInput');
+        const replaceInput = document.getElementById('replaceInput');
+        const findCountDisplay = document.getElementById('findCount');
 
         let fileHandle = null;
         let isMarkdown = false;
+        let searchResults = [];
+        let currentSearchIndex = -1;
 
-        // Service Worker Registration
+        // Custom History Manager (Thay thế cho execCommand('undo'))
+        const history = {
+            stack: [""],
+            pointer: 0,
+            push(val) {
+                if (val === this.stack[this.pointer]) return;
+                this.stack = this.stack.slice(0, this.pointer + 1);
+                this.stack.push(val);
+                if (this.stack.length > 50) this.stack.shift();
+                else this.pointer++;
+            },
+            undo() {
+                if (this.pointer > 0) return this.stack[--this.pointer];
+                return null;
+            },
+            redo() {
+                if (this.pointer < this.stack.length - 1) return this.stack[++this.pointer];
+                return null;
+            }
+        };
+
+        // Service Worker
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(registration => console.log('SW registered: ', registration))
-                    .catch(err => console.log('SW registration failed: ', err));
-            });
+            window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
         }
 
-        // Custom Context Menu Logic
+        // --- UI Interactions ---
+        moreOptionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const rect = moreOptionsBtn.getBoundingClientRect();
+            moreOptionsMenu.style.display = 'block';
+            moreOptionsMenu.style.right = (window.innerWidth - rect.right) + 'px';
+            moreOptionsMenu.style.top = (rect.bottom + 8) + 'px';
+        });
+
+        window.addEventListener('click', () => { 
+            contextMenu.style.display = 'none'; 
+            moreOptionsMenu.style.display = 'none';
+        });
+
+        spellCheckToggle.addEventListener('change', () => {
+            contentInput.spellcheck = spellCheckToggle.checked;
+            const val = contentInput.value;
+            contentInput.value = ''; contentInput.value = val;
+            contentInput.focus();
+        });
+
+        // --- Find & Replace Pro (Highlight All) ---
+        function toggleFindReplace() {
+            const isVisible = findReplaceBar.style.display === 'flex';
+            findReplaceBar.style.display = isVisible ? 'none' : 'flex';
+            if (!isVisible) { 
+                findInput.focus(); 
+                performSearch(); 
+            } else { 
+                contentInput.focus(); 
+                searchHighlights.innerHTML = ""; 
+            }
+        }
+
+        findInput.addEventListener('input', performSearch);
+        
+        // Đồng bộ scroll giữa textarea và highlight layer
+        contentInput.addEventListener('scroll', () => {
+            searchHighlights.scrollTop = contentInput.scrollTop;
+            searchHighlights.scrollLeft = contentInput.scrollLeft;
+        });
+
+        function performSearch() {
+            const query = findInput.value;
+            const text = contentInput.value;
+            
+            if (!query) { 
+                searchResults = []; 
+                currentSearchIndex = -1; 
+                searchHighlights.innerHTML = "";
+                updateSearchUI(); 
+                return; 
+            }
+
+            searchResults = [];
+            let pos = 0;
+            const lowerText = text.toLowerCase();
+            const lowerQuery = query.toLowerCase();
+            
+            while ((pos = lowerText.indexOf(lowerQuery, pos)) !== -1) {
+                searchResults.push({ start: pos, end: pos + query.length });
+                pos += query.length;
+            }
+
+            // Tạo highlight layer
+            let highlightedHtml = text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+
+            if (searchResults.length > 0) {
+                // Regex để highlight tất cả kết quả
+                const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(`(${escapedQuery})`, 'gi');
+                let i = 0;
+                highlightedHtml = highlightedHtml.replace(regex, (match) => {
+                    const isCurrent = (i === currentSearchIndex);
+                    const html = `<mark class="${isCurrent ? 'current' : ''}">${match}</mark>`;
+                    i++;
+                    return html;
+                });
+                
+                if (currentSearchIndex === -1) currentSearchIndex = 0;
+                highlightResult();
+            } else {
+                currentSearchIndex = -1;
+            }
+
+            searchHighlights.innerHTML = highlightedHtml + "\n\n"; // Thêm newline để khớp scroll
+            updateSearchUI();
+        }
+
+        function updateSearchUI() {
+            findCountDisplay.innerText = searchResults.length === 0 ? "0/0" : `${currentSearchIndex + 1}/${searchResults.length}`;
+        }
+
+        function findNext(forward = true) {
+            if (searchResults.length === 0) return;
+            currentSearchIndex = forward ? (currentSearchIndex + 1) % searchResults.length : (currentSearchIndex - 1 + searchResults.length) % searchResults.length;
+            performSearch();
+        }
+
+        function highlightResult() {
+            if (currentSearchIndex === -1 || searchResults.length === 0) return;
+            const result = searchResults[currentSearchIndex];
+            contentInput.setSelectionRange(result.start, result.end);
+            
+            // Cuộn đến kết quả
+            const lineHeight = parseInt(window.getComputedStyle(contentInput).lineHeight);
+            const linesBefore = contentInput.value.substring(0, result.start).split('\n').length;
+            const scrollTarget = (linesBefore * lineHeight) - (contentInput.clientHeight / 2);
+            contentInput.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+        }
+
+        function replaceOne() {
+            if (currentSearchIndex === -1) return;
+            const result = searchResults[currentSearchIndex];
+            const newVal = replaceInput.value;
+            const text = contentInput.value;
+            contentInput.value = text.substring(0, result.start) + newVal + text.substring(result.end);
+            history.push(contentInput.value);
+            performSearch(); renderPreview(); handleInput();
+        }
+
+        function replaceAll() {
+            const query = findInput.value;
+            if (!query) return;
+            const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            const count = (contentInput.value.match(regex) || []).length;
+            if (count === 0) return;
+            contentInput.value = contentInput.value.replace(regex, replaceInput.value);
+            history.push(contentInput.value);
+            performSearch(); renderPreview(); handleInput();
+            showToast(`Đã thay thế ${count} vị trí!`);
+        }
+
+        // --- Modern Core Actions (Clipboard & History API) ---
         window.addEventListener('contextmenu', (e) => {
             if (e.target.id !== 'noteContent' && e.target.id !== 'previewPane') return;
             e.preventDefault();
-            
-            const hasSelection = contentInput.selectionStart !== contentInput.selectionEnd;
-            if (hasSelection) {
-                ctxCut.classList.remove('disabled');
-                ctxCopy.classList.remove('disabled');
-            } else {
-                ctxCut.classList.add('disabled');
-                ctxCopy.classList.add('disabled');
-            }
-
             contextMenu.style.display = 'block';
-            let x = e.pageX;
-            let y = e.pageY;
-            const menuWidth = 220;
-            const menuHeight = 400;
-            if (x + menuWidth > window.innerWidth) x -= menuWidth;
-            if (y + menuHeight > window.innerHeight) y -= menuHeight;
-            contextMenu.style.left = x + 'px';
-            contextMenu.style.top = y + 'px';
+            contextMenu.style.left = Math.min(e.pageX, window.innerWidth - 230) + 'px';
+            contextMenu.style.top = Math.min(e.pageY, window.innerHeight - 300) + 'px';
         });
 
-        window.addEventListener('click', () => { contextMenu.style.display = 'none'; });
-
         async function handleMenuAction(action) {
-            contextMenu.style.display = 'none';
-            if (['undo', 'redo', 'cut', 'copy', 'paste', 'select-all'].includes(action)) {
-                contentInput.focus();
-            }
-            
+            contentInput.focus();
+            const start = contentInput.selectionStart;
+            const end = contentInput.selectionEnd;
+            const selectedText = contentInput.value.substring(start, end);
+
             switch(action) {
-                case 'undo': document.execCommand('undo'); break;
-                case 'redo': document.execCommand('redo'); break;
-                case 'save': saveFile(); break;
-                case 'save-as': saveFileAs(); break;
-                case 'new': newFile(); break;
-                case 'open': openFile(); break;
-                case 'cut': document.execCommand('cut'); break;
-                case 'copy': document.execCommand('copy'); break;
+                case 'undo': 
+                    const prev = history.undo();
+                    if (prev !== null) { contentInput.value = prev; renderPreview(); handleInput(); }
+                    break;
+                case 'redo':
+                    const next = history.redo();
+                    if (next !== null) { contentInput.value = next; renderPreview(); handleInput(); }
+                    break;
+                case 'cut':
+                    if (start !== end) {
+                        await navigator.clipboard.writeText(selectedText);
+                        contentInput.value = contentInput.value.substring(0, start) + contentInput.value.substring(end);
+                        history.push(contentInput.value);
+                        renderPreview(); handleInput();
+                    }
+                    break;
+                case 'copy':
+                    if (start !== end) await navigator.clipboard.writeText(selectedText);
+                    break;
                 case 'paste': 
                     try {
                         const text = await navigator.clipboard.readText();
-                        const start = contentInput.selectionStart;
-                        const end = contentInput.selectionEnd;
                         contentInput.setRangeText(text, start, end, 'end');
-                        renderPreview();
-                        handleInput();
-                    } catch (err) {
-                        showToast("Cần cấp quyền Clipboard để dán!");
-                    }
+                        history.push(contentInput.value);
+                        renderPreview(); handleInput();
+                    } catch (err) { showToast("Cần cấp quyền Clipboard!"); }
                     break;
                 case 'select-all': contentInput.select(); break;
             }
         }
 
-        if ('launchQueue' in window) {
-            window.launchQueue.setConsumer(async (launchParams) => {
-                if (launchParams.files && launchParams.files.length > 0) {
-                    loading.classList.remove('hidden');
-                    try {
-                        for (const handle of launchParams.files) {
-                            fileHandle = handle;
-                            const file = await fileHandle.getFile();
-                            contentInput.value = await file.text();
-                            titleInput.value = file.name.replace(/\.[^/.]+$/, "");
-                            checkFileType(file.name);
-                            updateSaveUI();
-                            showToast(`Đã mở tệp: ${file.name}`);
-                            break;
-                        }
-                    } catch (err) {
-                        showToast("Lỗi khi mở tệp!");
-                    } finally {
-                        loading.classList.add('hidden');
-                    }
-                }
-            });
-        }
-
         function showToast(msg) {
-            toast.innerText = msg;
-            toast.classList.add("show");
+            toast.innerText = msg; toast.classList.add("show");
             setTimeout(() => { toast.classList.remove("show"); }, 3000);
         }
 
         setTimeout(() => { brandLogo.classList.add('collapsed'); }, 2000);
 
         function renderPreview() {
-            if (isMarkdown) previewPane.innerHTML = marked.parse(contentInput.value);
+            if (isMarkdown) {
+                // Sử dụng DOMPurify để sanitize output tránh XSS
+                const dirty = marked.parse(contentInput.value);
+                previewPane.innerHTML = DOMPurify.sanitize(dirty);
+            }
         }
 
         function updateSaveUI() {
@@ -387,49 +577,47 @@
             }
         }
 
-        titleInput.addEventListener('keydown', (e) => {
-            if (e.ctrlKey && (e.key === 'z' || e.key === 'y')) {
-                e.stopPropagation(); 
-            }
-        });
-
         contentInput.addEventListener('keydown', (e) => {
-            const cursor = contentInput.selectionStart;
-            const end = contentInput.selectionEnd;
-            const text = contentInput.value;
+            const cursor = contentInput.selectionStart, end = contentInput.selectionEnd, text = contentInput.value;
+            
+            // Custom Shortcuts for History
+            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); handleMenuAction('undo'); return; }
+            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); handleMenuAction('redo'); return; }
 
             if (e.ctrlKey) {
                 if (e.key === 's') { e.preventDefault(); saveFile(); }
                 if (e.key === 'o') { e.preventDefault(); openFile(); }
                 if (e.key === 'n') { e.preventDefault(); newFile(); }
+                if (e.key === 'f') { e.preventDefault(); toggleFindReplace(); }
             }
-
+            if (e.key === 'Escape' && findReplaceBar.style.display === 'flex') toggleFindReplace();
             if (e.key === 'Tab') {
                 e.preventDefault();
                 contentInput.value = text.substring(0, cursor) + "    " + text.substring(end);
                 contentInput.setSelectionRange(cursor + 4, cursor + 4);
-                return;
+                history.push(contentInput.value);
             }
-
             if (cursor === end) {
                 const pairs = { '"': '"', "'": "'", "(": ")", "[": "]", "{": "}", "`": "`", "*": "*", "_": "_" };
                 if (pairs[e.key]) {
-                    if (e.key === '*' && text[cursor-1] === '*') {
-                        e.preventDefault();
-                        contentInput.value = text.substring(0, cursor) + "**" + text.substring(cursor);
-                        contentInput.setSelectionRange(cursor + 1, cursor + 1);
-                        return;
-                    }
                     e.preventDefault();
                     contentInput.value = text.substring(0, cursor) + e.key + pairs[e.key] + text.substring(cursor);
                     contentInput.setSelectionRange(cursor + 1, cursor + 1);
+                    history.push(contentInput.value);
                 }
             }
         });
 
-        contentInput.addEventListener('input', () => {
-            renderPreview();
+        // Xử lý Input chính
+        let inputTimer;
+        contentInput.addEventListener('input', () => { 
+            renderPreview(); 
             handleInput();
+            if (findReplaceBar.style.display === 'flex') performSearch();
+            
+            // Throttle việc đẩy vào history stack
+            clearTimeout(inputTimer);
+            inputTimer = setTimeout(() => history.push(contentInput.value), 500);
         });
 
         function checkFileType(fileName) {
@@ -447,27 +635,25 @@
         }
 
         function insertMD(prefix, suffix) {
-            const start = contentInput.selectionStart;
-            const end = contentInput.selectionEnd;
+            const start = contentInput.selectionStart, end = contentInput.selectionEnd;
             contentInput.value = contentInput.value.substring(0, start) + prefix + contentInput.value.substring(start, end) + suffix + contentInput.value.substring(end);
             contentInput.focus();
             const newPos = start + prefix.length + (end - start);
             contentInput.setSelectionRange(newPos, newPos);
+            history.push(contentInput.value);
             renderPreview();
         }
 
         async function openFile() {
             try {
                 const [handle] = await window.showOpenFilePicker();
-                fileHandle = handle;
-                loading.classList.remove('hidden');
+                fileHandle = handle; loading.classList.remove('hidden');
                 const file = await fileHandle.getFile();
                 contentInput.value = await file.text();
+                history.push(contentInput.value);
                 titleInput.value = file.name.replace(/\.[^/.]+$/, "");
-                checkFileType(file.name);
-                updateSaveUI();
+                checkFileType(file.name); updateSaveUI();
                 loading.classList.add('hidden');
-                showToast(`Đã mở: ${file.name}`);
             } catch (err) {}
         }
 
@@ -488,21 +674,21 @@
                 await saveFile();
                 const file = await fileHandle.getFile();
                 titleInput.value = file.name.replace(/\.[^/.]+$/, "");
-                checkFileType(file.name);
-                updateSaveUI();
+                checkFileType(file.name); updateSaveUI();
             } catch (err) {}
         }
 
         function newFile() {
             fileHandle = null; titleInput.value = ''; contentInput.value = '';
+            history.push("");
             checkFileType(""); updateSaveUI(); showToast("Tệp mới!");
         }
 
-        let timeout = null;
+        let autoSaveTimeout = null;
         function handleInput() {
             if (autoSaveToggle.checked && fileHandle) {
-                clearTimeout(timeout);
-                timeout = setTimeout(saveFile, 1000);
+                clearTimeout(autoSaveTimeout);
+                autoSaveTimeout = setTimeout(saveFile, 1000);
             }
         }
     </script>
