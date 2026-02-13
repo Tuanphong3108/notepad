@@ -651,12 +651,28 @@ function enableAutoSave() {
             renderPreview();
         }
 
-        async function openFile() {
-            try {
-                const [handle] = await window.showOpenFilePicker();
-                await loadFileFromHandle(handle);
-            } catch (err) {}
-        }
+   async function openFile() {
+    try {
+        const [handle] = await window.showOpenFilePicker({
+            types: [
+                {
+                    description: "Supported text/code files",
+                    accept: {
+                        "text/plain": [".txt", ".md", ".json"],
+                        "text/html": [".html", ".htm"],
+                        "text/css": [".css"],
+                        "application/javascript": [".js"]
+                    }
+                }
+            ],
+            excludeAcceptAllOption: true,
+            multiple: false
+        });
+
+        await loadFileFromHandle(handle);
+    } catch (err) {}
+}
+
 
         async function saveFile() {
             if (!fileHandle) return saveFileAs();
@@ -671,15 +687,28 @@ function enableAutoSave() {
             } catch (err) { showToast("Lỗi ghi file!"); }
         }
 
-        async function saveFileAs() {
-            try {
-                fileHandle = await window.showSaveFilePicker();
-                await saveFile();
-                const file = await fileHandle.getFile();
-                titleInput.value = file.name.replace(/\.[^/.]+$/, "");
-                checkFileType(file.name); updateSaveUI();
-            } catch (err) {}
-        }
+async function saveFileAs() {
+    try {
+        fileHandle = await window.showSaveFilePicker({
+            suggestedName: "no_name.txt",
+            types: [
+                {
+                    description: "Text file",
+                    accept: { "text/plain": [".txt"] }
+                }
+            ]
+        });
+
+        await saveFile();
+
+        const file = await fileHandle.getFile();
+        titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+        checkFileType(file.name);
+        updateSaveUI();
+
+    } catch (err) {}
+}
+
 
         function newFile() {
             fileHandle = null; titleInput.value = ''; contentInput.value = '';
