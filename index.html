@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notepad MD3</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="icon.png">
+    <!-- PWA Manifest Link -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Google Sans Flex & Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..1000&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <style>
+        :root {
+            --md-sys-color-primary: #6750A4;
+            --md-sys-color-on-primary: #FFFFFF;
+            --md-sys-color-surface: #FEF7FF;
+            --md-sys-color-surface-container: #F3EDF7;
+            --md-sys-color-outline: #79747E;
+            --md-sys-color-error: #B3261E;
+            --md-sys-color-state-layer: rgba(103, 80, 164, 0.12);
+            --md-sys-color-on-surface-variant: #49454F;
+        }
+
+        body {
+            font-family: 'Google Sans Flex', sans-serif;
+            background-color: var(--md-sys-color-surface);
+            color: #1D1B20;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- Custom Context Menu --- */
+        #contextMenu {
+            position: fixed;
+            display: none;
+            background: var(--md-sys-color-surface-container);
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 220px;
+            padding: 8px 0;
+            animation: menuFade 0.15s ease-out;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        @keyframes menuFade {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .menu-item {
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: #1D1B20;
+        }
+
+        .menu-item:hover:not(.disabled) { 
+            background: var(--md-sys-color-state-layer); 
+        }
+        
+        .menu-item:hover:not(.disabled) .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1;
+        }
+
+        .menu-item.disabled {
+            opacity: 0.38;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .menu-item .material-symbols-outlined { 
+            font-size: 20px; 
+            transition: font-variation-settings 0.2s;
+        }
+
+        /* --- Header & Brand --- */
+        .app-header {
+            height: 64px;
+            background-color: var(--md-sys-color-surface);
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        #brandLogo { transition: all 0.8s ease; max-width: 200px; display: flex; align-items: center; overflow: hidden; white-space: nowrap; }
+        #brandLogo.collapsed { max-width: 40px; }
+        #brandIcon { transform: scale(0); opacity: 0; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        #brandLogo.collapsed #brandIcon { transform: scale(1); opacity: 1; }
+        #brandLogo.collapsed #brandText { opacity: 0; transform: translateX(-20px); pointer-events: none; }
+
+        /* --- Action Buttons --- */
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            height: 40px;
+            min-width: 40px;
+            max-width: 40px;
+            padding: 0 8px;
+            border-radius: 20px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            white-space: nowrap;
+            cursor: pointer;
+            gap: 8px;
+        }
+        .action-btn:hover:not(.disabled) { max-width: 180px; background-color: var(--md-sys-color-state-layer); padding: 0 16px; }
+        .action-btn:hover:not(.disabled) .material-symbols-outlined { font-variation-settings: 'FILL' 1; }
+        .action-btn.primary { background-color: #EADDFF; color: #21005D; }
+        .action-label { font-size: 14px; font-weight: 700; opacity: 0; transition: opacity 0.3s; }
+        .action-btn:hover:not(.disabled) .action-label { opacity: 1; }
+        
+        .action-btn.disabled { opacity: 0.38; cursor: default; }
+
+        /* --- MD3 Switch Overshoot --- */
+        .switch { position: relative; display: inline-block; width: 52px !important; height: 32px !important; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--md-sys-color-surface-container);
+            border: 2px solid var(--md-sys-color-outline);
+            transition: .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border-radius: 32px;
+        }
+        .slider:before {
+            position: absolute; content: "close"; font-family: 'Material Symbols Outlined';
+            font-size: 16px; display: flex; align-items: center; justify-content: center;
+            height: 24px; width: 24px; left: 2px; bottom: 2px;
+            background-color: var(--md-sys-color-outline); color: white;
+            transition: .4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--md-sys-color-primary); border-color: var(--md-sys-color-primary); }
+        input:checked + .slider:before { content: "check"; transform: translateX(20px); background-color: var(--md-sys-color-on-primary); color: var(--md-sys-color-primary); }
+
+        /* --- Editor --- */
+        #editorArea { display: flex; flex-grow: 1; overflow: hidden; background: white; }
+        #noteContent {
+            flex: 1; padding: 40px; outline: none; border: none; resize: none;
+            font-size: 1.125rem; line-height: 1.8; color: #1D1B20; overflow-y: auto;
+            border-right: 1px solid rgba(0,0,0,0.05); user-select: text;
+        }
+        #previewPane { flex: 1; padding: 40px; overflow-y: auto; background-color: var(--md-sys-color-surface); display: none; user-select: text; }
+        #previewPane.active { display: block; }
+
+        /* Rendered Markdown Styling */
+        .markdown-body h1 { font-size: 2.25rem; font-weight: 900; color: var(--md-sys-color-primary); border-bottom: 2px solid var(--md-sys-color-outline); margin-bottom: 1rem; }
+        .markdown-body strong { font-weight: 1000; color: #000; }
+        .markdown-body pre { background: #1D1B20; color: #F4EFF4; padding: 1rem; border-radius: 12px; }
+
+        #toast { visibility: hidden; min-width: 200px; background: #313033; color: #F4EFF4; border-radius: 12px; padding: 12px 24px; position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%); z-index: 100; transition: 0.3s; }
+        #toast.show { visibility: visible; }
+        
+        #loading img { filter: brightness(0) saturate(100%) invert(35%) sepia(21%) font-family(53%) hue-rotate(217deg) brightness(96%) contrast(91%); }
+    </style>
+</head>
+<body>
+
+    <!-- Custom Context Menu -->
+    <div id="contextMenu">
+        <div class="menu-item" onclick="handleMenuAction('undo')"><span class="material-symbols-outlined">undo</span>Hoàn tác</div>
+        <div class="menu-item" onclick="handleMenuAction('redo')"><span class="material-symbols-outlined">redo</span>Làm lại</div>
+        <hr class="my-1 border-black/5">
+        <div class="menu-item" onclick="handleMenuAction('save')"><span class="material-symbols-outlined">save</span>Lưu tệp</div>
+        <div class="menu-item" onclick="handleMenuAction('save-as')"><span class="material-symbols-outlined">save_as</span>Lưu bản mới</div>
+        <div class="menu-item" onclick="handleMenuAction('new')"><span class="material-symbols-outlined">note_add</span>Tạo tệp mới</div>
+        <div class="menu-item" onclick="handleMenuAction('open')"><span class="material-symbols-outlined">file_open</span>Mở tệp</div>
+        <hr class="my-1 border-black/5">
+        <div id="ctx-cut" class="menu-item" onclick="handleMenuAction('cut')"><span class="material-symbols-outlined">content_cut</span>Cắt</div>
+        <div id="ctx-copy" class="menu-item" onclick="handleMenuAction('copy')"><span class="material-symbols-outlined">content_copy</span>Sao chép</div>
+        <div class="menu-item" onclick="handleMenuAction('paste')"><span class="material-symbols-outlined">content_paste</span>Dán</div>
+        <div class="menu-item" onclick="handleMenuAction('select-all')"><span class="material-symbols-outlined">select_all</span>Chọn tất cả</div>
+    </div>
+
+    <header class="app-header">
+        <div class="flex items-center gap-2 overflow-hidden flex-shrink-0">
+            <div id="brandLogo" class="flex items-center text-[#6750A4]">
+                <span id="brandIcon" class="material-symbols-outlined text-3xl flex-shrink-0 mr-2">description</span>
+                <span id="brandText" class="font-black text-xl tracking-tight">Notepad</span>
+            </div>
+            
+            <div class="flex items-center gap-1 ml-2">
+                <button onclick="handleMenuAction('undo')" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">undo</span></button>
+                <button onclick="handleMenuAction('redo')" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">redo</span></button>
+            </div>
+
+            <div class="header-options flex items-center gap-3">
+                <div id="autoSaveContainer" class="hidden items-center gap-2">
+                    <label class="switch"><input type="checkbox" id="autoSaveToggle"><span class="slider"></span></label>
+                    <span class="text-[10px] font-black uppercase text-[#21005D]">Auto Save</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label class="switch"><input type="checkbox" id="spellCheckToggle" checked><span class="slider"></span></label>
+                    <span class="text-[10px] font-black uppercase text-[#21005D]">Spellcheck</span>
+                </div>
+                <div id="saveStatus" class="text-[#381E72] opacity-0 transition-opacity"><span class="material-symbols-outlined text-lg">sync_saved_locally</span></div>
+            </div>
+        </div>
+
+        <div id="mdToolbar" class="hidden sm:flex items-center gap-0.5 bg-[#F7F2FA] px-2 py-1 rounded-full border border-black/5 opacity-0 transition-all">
+            <button onclick="insertMD('**', '**')" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">format_bold</span></button>
+            <button onclick="insertMD('*', '*')" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">format_italic</span></button>
+            <button onclick="insertMD('# ', '')" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">format_size</span></button>
+            <button onclick="insertMD('`', '`')" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">code</span></button>
+        </div>
+
+        <div class="flex items-center gap-2 flex-shrink-0">
+            <div class="flex flex-col items-end">
+                <input type="text" id="noteTitle" placeholder="Không tên" class="bg-transparent text-sm font-bold outline-none border-none text-right w-24 sm:w-32 lg:w-48 placeholder:text-black/30 border-b border-transparent focus:border-black/10 transition-colors" autocomplete="off">
+            </div>
+            <div class="w-[1px] h-6 bg-black/10 mx-1"></div>
+            <button onclick="openFile()" class="action-btn"><span class="material-symbols-outlined">file_open</span><span class="action-label">Mở tệp</span></button>
+            <button id="mainSaveBtn" onclick="saveFile()" class="action-btn primary hidden"><span class="material-symbols-outlined">save</span><span class="action-label">Lưu tệp</span></button>
+            <button id="saveAsBtn" onclick="saveFileAs()" class="action-btn primary"><span class="material-symbols-outlined">save_as</span><span class="action-label">Lưu bản mới</span></button>
+            <button onclick="newFile()" class="action-btn danger text-[#B3261E]"><span class="material-symbols-outlined">note_add</span><span class="action-label">Tạo tệp mới</span></button>
+        </div>
+    </header>
+
+    <main id="editorArea">
+        <textarea id="noteContent" spellcheck="true" placeholder="Bắt đầu viết điều gì đó vĩ đại..."></textarea>
+        <div id="previewPane" class="markdown-body"></div>
+    </main>
+
+    <div id="toast">Thông báo</div>
+    <div id="loading" class="fixed inset-0 bg-white/80 backdrop-blur-md flex flex-col items-center justify-center z-[100] hidden">
+        <img src="https://tuanphong3108.github.io/md3-loading/Loading_Indicator.gif" alt="Loading" class="w-16">
+        <p class="mt-4 font-black text-[#6750A4] uppercase tracking-widest text-[10px]">Đang xử lý</p>
+    </div>
+
+    <script>
+        const contentInput = document.getElementById('noteContent');
+        const previewPane = document.getElementById('previewPane');
+        const contextMenu = document.getElementById('contextMenu');
+        const brandLogo = document.getElementById('brandLogo');
+        const titleInput = document.getElementById('noteTitle');
+        const mainSaveBtn = document.getElementById('mainSaveBtn');
+        const autoSaveToggle = document.getElementById('autoSaveToggle');
+        const autoSaveContainer = document.getElementById('autoSaveContainer');
+        const toast = document.getElementById('toast');
+        const mdToolbar = document.getElementById('mdToolbar');
+        const saveStatus = document.getElementById('saveStatus');
+        const loading = document.getElementById('loading');
+        
+        const ctxCut = document.getElementById('ctx-cut');
+        const ctxCopy = document.getElementById('ctx-copy');
+
+        let fileHandle = null;
+        let isMarkdown = false;
+
+        // Custom Context Menu Logic
+        window.addEventListener('contextmenu', (e) => {
+            if (e.target.id !== 'noteContent' && e.target.id !== 'previewPane') return;
+            e.preventDefault();
+            
+            const hasSelection = contentInput.selectionStart !== contentInput.selectionEnd;
+            if (hasSelection) {
+                ctxCut.classList.remove('disabled');
+                ctxCopy.classList.remove('disabled');
+            } else {
+                ctxCut.classList.add('disabled');
+                ctxCopy.classList.add('disabled');
+            }
+
+            contextMenu.style.display = 'block';
+            let x = e.pageX;
+            let y = e.pageY;
+            const menuWidth = 220;
+            const menuHeight = 400;
+            if (x + menuWidth > window.innerWidth) x -= menuWidth;
+            if (y + menuHeight > window.innerHeight) y -= menuHeight;
+            contextMenu.style.left = x + 'px';
+            contextMenu.style.top = y + 'px';
+        });
+
+        window.addEventListener('click', () => { contextMenu.style.display = 'none'; });
+
+        async function handleMenuAction(action) {
+            contextMenu.style.display = 'none';
+            contentInput.focus();
+            
+            switch(action) {
+                case 'undo': document.execCommand('undo'); break;
+                case 'redo': document.execCommand('redo'); break;
+                case 'save': saveFile(); break;
+                case 'save-as': saveFileAs(); break;
+                case 'new': newFile(); break;
+                case 'open': openFile(); break;
+                case 'cut': document.execCommand('cut'); break;
+                case 'copy': document.execCommand('copy'); break;
+                case 'paste': 
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        const start = contentInput.selectionStart;
+                        const end = contentInput.selectionEnd;
+                        contentInput.setRangeText(text, start, end, 'end');
+                        renderPreview();
+                        handleInput();
+                    } catch (err) {
+                        showToast("Cần cấp quyền Clipboard để dán!");
+                    }
+                    break;
+                case 'select-all': contentInput.select(); break;
+            }
+        }
+
+        // --- PWA: Service Worker Registration ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Ưu tiên file sw.js vật lý cùng thư mục
+                navigator.serviceWorker.register('sw.js').then(reg => {
+                    console.log('SW Registered!', reg);
+                }).catch(err => {
+                    console.warn('Physical SW failed, using fallback:', err);
+                    // Fallback nếu không có file sw.js
+                    const swCode = `self.addEventListener('fetch', (e) => { /* Caching logic */ });`;
+                    const blob = new Blob([swCode], {type: 'application/javascript'});
+                    navigator.serviceWorker.register(URL.createObjectURL(blob));
+                });
+            });
+        }
+
+        // --- PWA: File Launch Handling (launchQueue) ---
+        if ('launchQueue' in window) {
+            window.launchQueue.setConsumer(async (launchParams) => {
+                if (launchParams.files && launchParams.files.length > 0) {
+                    loading.classList.remove('hidden');
+                    try {
+                        for (const handle of launchParams.files) {
+                            fileHandle = handle;
+                            const file = await fileHandle.getFile();
+                            contentInput.value = await file.text();
+                            titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+                            checkFileType(file.name);
+                            updateSaveUI();
+                            showToast(`Đã mở tệp: ${file.name}`);
+                            break; // Chỉ mở file đầu tiên
+                        }
+                    } catch (err) {
+                        showToast("Lỗi khi mở tệp từ hệ thống!");
+                    } finally {
+                        loading.classList.add('hidden');
+                    }
+                }
+            });
+        }
+
+        function showToast(msg) {
+            toast.innerText = msg;
+            toast.classList.add("show");
+            setTimeout(() => { toast.classList.remove("show"); }, 3000);
+        }
+
+        setTimeout(() => { brandLogo.classList.add('collapsed'); }, 2000);
+
+        function renderPreview() {
+            if (isMarkdown) previewPane.innerHTML = marked.parse(contentInput.value);
+        }
+
+        function updateSaveUI() {
+            const hasHandle = !!fileHandle;
+            if (hasHandle && 'showOpenFilePicker' in window) {
+                autoSaveContainer.style.display = 'flex';
+                mainSaveBtn.classList.remove('hidden');
+            } else {
+                autoSaveContainer.style.display = 'none';
+                mainSaveBtn.classList.add('hidden');
+            }
+        }
+
+        contentInput.addEventListener('keydown', (e) => {
+            const cursor = contentInput.selectionStart;
+            const end = contentInput.selectionEnd;
+            const text = contentInput.value;
+
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                contentInput.value = text.substring(0, cursor) + "    " + text.substring(end);
+                contentInput.setSelectionRange(cursor + 4, cursor + 4);
+                return;
+            }
+
+            if (cursor === end) {
+                const pairs = { '"': '"', "'": "'", "(": ")", "[": "]", "{": "}", "`": "`", "*": "*", "_": "_" };
+                if (pairs[e.key]) {
+                    if (e.key === '*' && text[cursor-1] === '*') {
+                        e.preventDefault();
+                        contentInput.value = text.substring(0, cursor) + "**" + text.substring(cursor);
+                        contentInput.setSelectionRange(cursor + 1, cursor + 1);
+                        return;
+                    }
+                    e.preventDefault();
+                    contentInput.value = text.substring(0, cursor) + e.key + pairs[e.key] + text.substring(cursor);
+                    contentInput.setSelectionRange(cursor + 1, cursor + 1);
+                }
+            }
+        });
+
+        contentInput.addEventListener('input', () => {
+            renderPreview();
+            handleInput();
+        });
+
+        function checkFileType(fileName) {
+            isMarkdown = fileName.toLowerCase().endsWith('.md');
+            if (isMarkdown) {
+                mdToolbar.classList.replace('opacity-0', 'opacity-100');
+                mdToolbar.classList.remove('pointer-events-none');
+                previewPane.classList.add('active');
+                contentInput.style.fontFamily = "monospace";
+                renderPreview();
+            } else {
+                mdToolbar.classList.replace('opacity-100', 'opacity-0');
+                mdToolbar.classList.add('pointer-events-none');
+                previewPane.classList.remove('active');
+                contentInput.style.fontFamily = "inherit";
+            }
+        }
+
+        function insertMD(prefix, suffix) {
+            const start = contentInput.selectionStart;
+            const end = contentInput.selectionEnd;
+            contentInput.value = contentInput.value.substring(0, start) + prefix + contentInput.value.substring(start, end) + suffix + contentInput.value.substring(end);
+            contentInput.focus();
+            const newPos = start + prefix.length + (end - start);
+            contentInput.setSelectionRange(newPos, newPos);
+            renderPreview();
+        }
+
+        async function openFile() {
+            try {
+                const [handle] = await window.showOpenFilePicker();
+                fileHandle = handle;
+                loading.classList.remove('hidden');
+                const file = await fileHandle.getFile();
+                contentInput.value = await file.text();
+                titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+                checkFileType(file.name);
+                updateSaveUI();
+                loading.classList.add('hidden');
+                showToast(`Đã mở: ${file.name}`);
+            } catch (err) {}
+        }
+
+        async function saveFile() {
+            if (!fileHandle) return saveFileAs();
+            try {
+                const writable = await fileHandle.createWritable();
+                await writable.write(contentInput.value);
+                await writable.close();
+                saveStatus.style.opacity = '1';
+                setTimeout(() => { saveStatus.style.opacity = '0'; }, 1500);
+            } catch (err) { showToast("Lỗi ghi file!"); }
+        }
+
+        async function saveFileAs() {
+            try {
+                fileHandle = await window.showSaveFilePicker();
+                await saveFile();
+                const file = await fileHandle.getFile();
+                titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+                checkFileType(file.name);
+                updateSaveUI();
+            } catch (err) {}
+        }
+
+        function newFile() {
+            fileHandle = null; titleInput.value = ''; contentInput.value = '';
+            checkFileType(""); updateSaveUI(); showToast("Tệp mới!");
+        }
+
+        let timeout = null;
+        function handleInput() {
+            if (autoSaveToggle.checked && fileHandle) {
+                clearTimeout(timeout);
+                timeout = setTimeout(saveFile, 1000);
+            }
+        }
+    </script>
+</body>
+</html>
