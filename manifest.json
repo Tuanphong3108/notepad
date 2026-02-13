@@ -16,7 +16,7 @@
   ],
   "file_handlers": [
     {
-      "action": "./notepad.html",
+      "action": "./index.html",
       "accept": {
         "text/plain": [".txt"],
         "text/markdown": [".md"],
