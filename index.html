@@ -8,6 +8,7 @@
     <link rel="icon" type="image/png" href="icon.png">
     <!-- PWA Manifest Link -->
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#FEF7FF">
     
     <!-- Google Sans Flex, Google Sans Code & Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..1000&family=Google+Sans+Code:wght@400;700&display=swap" rel="stylesheet">
@@ -156,7 +157,7 @@
         #editorArea { display: flex; flex-grow: 1; overflow: hidden; background: white; }
         #noteContent {
             flex: 1; padding: 40px; outline: none; border: none; resize: none;
-            font-family: 'Google Sans Code', 'Consolas', monospace; /* Áp dụng phông chữ Google Sans Code */
+            font-family: 'Google Sans Code', 'Consolas', monospace;
             font-size: 1rem; line-height: 1.8; color: #1D1B20; overflow-y: auto;
             border-right: 1px solid rgba(0,0,0,0.05); user-select: text;
         }
@@ -230,7 +231,6 @@
         </div>
 
         <div class="flex items-center gap-2 flex-shrink-0">
-            <!-- Ô nhập tên tệp - đã tách biệt lịch sử Ctrl+Z -->
             <div class="flex flex-col items-end">
                 <input type="text" id="noteTitle" placeholder="Không tên" class="bg-transparent text-sm font-bold outline-none border-none text-right w-24 sm:w-32 lg:w-48 placeholder:text-black/30 border-b border-transparent focus:border-black/10 transition-colors" autocomplete="off">
             </div>
@@ -243,7 +243,6 @@
     </header>
 
     <main id="editorArea">
-        <!-- Vùng soạn thảo với phông chữ Google Sans Code -->
         <textarea id="noteContent" spellcheck="true" placeholder="Bắt đầu viết điều gì đó vĩ đại..."></textarea>
         <div id="previewPane" class="markdown-body"></div>
     </main>
@@ -273,6 +272,15 @@
 
         let fileHandle = null;
         let isMarkdown = false;
+
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(registration => console.log('SW registered: ', registration))
+                    .catch(err => console.log('SW registration failed: ', err));
+            });
+        }
 
         // Custom Context Menu Logic
         window.addEventListener('contextmenu', (e) => {
@@ -332,15 +340,6 @@
             }
         }
 
-        // --- PWA Setup ---
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                const swCode = `self.addEventListener('fetch', (e) => { });`;
-                const blob = new Blob([swCode], {type: 'application/javascript'});
-                navigator.serviceWorker.register(URL.createObjectURL(blob));
-            });
-        }
-
         if ('launchQueue' in window) {
             window.launchQueue.setConsumer(async (launchParams) => {
                 if (launchParams.files && launchParams.files.length > 0) {
@@ -388,7 +387,6 @@
             }
         }
 
-        // Chặn sự kiện Ctrl+Z trên titleInput để nó không ảnh hưởng tới noteContent
         titleInput.addEventListener('keydown', (e) => {
             if (e.ctrlKey && (e.key === 'z' || e.key === 'y')) {
                 e.stopPropagation(); 
@@ -404,9 +402,6 @@
                 if (e.key === 's') { e.preventDefault(); saveFile(); }
                 if (e.key === 'o') { e.preventDefault(); openFile(); }
                 if (e.key === 'n') { e.preventDefault(); newFile(); }
-                if (e.key === 'z' || e.key === 'y') {
-                    e.stopPropagation();
-                }
             }
 
             if (e.key === 'Tab') {
