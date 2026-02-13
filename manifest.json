@@ -2,7 +2,7 @@
   "name": "Notepad MD3 Expressive",
   "short_name": "Notepad",
   "description": "Ứng dụng ghi chú phong cách Material Design 3",
-  "start_url": "./notepad.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#FEF7FF",
   "theme_color": "#6750A4",
