@@ -343,6 +343,7 @@
         let isMarkdown = false;
         let searchResults = [];
         let currentSearchIndex = -1;
+        let isSaved = true;
 
         // Custom History Manager
         const history = {
@@ -620,6 +621,7 @@ function enableAutoSave() {
 
         let inputTimer;
         contentInput.addEventListener('input', () => { 
+            isSaved = false;
             renderPreview(); handleInput();
             if (findReplaceBar.style.display === 'flex') performSearch();
             clearTimeout(inputTimer);
@@ -662,6 +664,8 @@ function enableAutoSave() {
                 const writable = await fileHandle.createWritable();
                 await writable.write(contentInput.value);
                 await writable.close();
+        
+                isSaved = true;
                 saveStatus.style.opacity = '1';
                 setTimeout(() => { saveStatus.style.opacity = '0'; }, 1500);
             } catch (err) { showToast("Lỗi ghi file!"); }
@@ -690,6 +694,15 @@ function enableAutoSave() {
                 autoSaveTimeout = setTimeout(saveFile, 1000);
             }
         }
+
+        window.addEventListener('beforeunload', (e) => {
+    if (!isSaved) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+
     </script>
     
 </body>
