@@ -260,10 +260,6 @@
                     <label class="switch"><input type="checkbox" id="autoSaveToggle"><span class="slider"></span></label>
                     <span class="hidden md:inline text-[10px] font-black uppercase text-[#21005D]">Auto Save</span>
                 </div>
-                <div class="flex items-center gap-2">
-                    <label class="switch"><input type="checkbox" id="spellCheckToggle" checked><span class="slider"></span></label>
-                    <span class="hidden md:inline text-[10px] font-black uppercase text-[#21005D]">Spellcheck</span>
-                </div>
             </div>
             <div class="w-[1px] h-6 bg-black/10"></div>
             <button id="moreOptionsBtn" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">more_vert</span></button>
@@ -291,7 +287,7 @@
     <main id="editorArea">
         <div class="editor-wrapper">
             <div id="searchHighlights"></div>
-            <textarea id="noteContent" spellcheck="true" placeholder="Bắt đầu viết điều gì đó vĩ đại..."></textarea>
+            <textarea id="noteContent" spellcheck="false" placeholder="Bắt đầu viết..."></textarea>
         </div>
         <div id="previewPane" class="markdown-body"></div>
     </main>
@@ -301,6 +297,23 @@
         <img src="https://tuanphong3108.github.io/md3-loading/Loading_Indicator.gif" alt="Loading" class="w-16" style="filter: brightness(0) saturate(100%) invert(35%) sepia(21%) saturate(53%) hue-rotate(217deg) brightness(96%) contrast(91%);">
         <p class="mt-4 font-black text-[#6750A4] uppercase tracking-widest text-[10px]">Đang xử lý</p>
     </div>
+
+    <div id="autoSavePrompt" class="fixed inset-0 bg-black/30 flex items-center justify-center z-[200] hidden">
+    <div class="bg-white rounded-2xl shadow-xl p-6 w-[320px]">
+        <h2 class="text-lg font-black mb-2">Bạn có muốn bật Auto Save?</h2>
+        <p class="text-sm text-black/60 mb-4">
+            Khi bật, nội dung sẽ tự động được lưu sau mỗi lần chỉnh sửa để tránh mất dữ liệu ngoài ý muốn.
+        </p>
+        <div class="flex justify-end gap-2">
+            <button onclick="closeAutoSavePrompt()" class="px-4 py-2 rounded-full hover:bg-black/5 font-bold text-sm">
+                Không
+            </button>
+            <button onclick="enableAutoSave()" class="px-4 py-2 rounded-full bg-[#6750A4] text-white font-bold text-sm">
+                Bật
+            </button>
+        </div>
+    </div>
+</div>
 
     <script>
         const contentInput = document.getElementById('noteContent');
@@ -323,6 +336,8 @@
         const findInput = document.getElementById('findInput');
         const replaceInput = document.getElementById('replaceInput');
         const findCountDisplay = document.getElementById('findCount');
+        const autoSavePrompt = document.getElementById('autoSavePrompt');
+
 
         let fileHandle = null;
         let isMarkdown = false;
@@ -370,6 +385,10 @@
                 history.push(text);
                 titleInput.value = file.name.replace(/\.[^/.]+$/, "");
                 checkFileType(file.name);
+                if (!autoSaveToggle.checked) {
+                    showAutoSavePrompt();
+                }
+
                 updateSaveUI();
                 renderPreview();
                 showToast(`Đã mở: ${file.name}`);
@@ -397,13 +416,6 @@
         window.addEventListener('click', () => { 
             contextMenu.style.display = 'none'; 
             moreOptionsMenu.style.display = 'none';
-        });
-
-        spellCheckToggle.addEventListener('change', () => {
-            contentInput.spellcheck = spellCheckToggle.checked;
-            const val = contentInput.value;
-            contentInput.value = ''; contentInput.value = val;
-            contentInput.focus();
         });
 
         // Search Engine
@@ -544,6 +556,20 @@
             setTimeout(() => { toast.classList.remove("show"); }, 3000);
         }
 
+        function showAutoSavePrompt() {
+    autoSavePrompt.classList.remove('hidden');
+}
+
+function closeAutoSavePrompt() {
+    autoSavePrompt.classList.add('hidden');
+}
+
+function enableAutoSave() {
+    autoSaveToggle.checked = true;
+    closeAutoSavePrompt();
+}
+
+
         setTimeout(() => { brandLogo.classList.add('collapsed'); }, 2000);
 
         function renderPreview() {
@@ -665,5 +691,6 @@
             }
         }
     </script>
+    
 </body>
 </html>
