@@ -1,7 +1,10 @@
-const CACHE_NAME = 'notepad-md3-v4';
+const CACHE_NAME = 'notepad-md3-v6';
+
 const ASSETS = [
   '/',
   '/index.html',
+
+  // CDN – vẫn cache nhưng xử lý an toàn
   'https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..1000&family=Google+Sans+Code:wght@400;700&display=swap',
   'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200',
   'https://cdn.tailwindcss.com',
@@ -9,36 +12,67 @@ const ASSETS = [
   'https://tuanphong3108.github.io/md3-loading/Loading_Indicator.gif'
 ];
 
-// Cài đặt Service Worker và lưu trữ tài nguyên vào cache
+
+// ===== INSTALL =====
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(ASSETS))
-      .then(self.skipWaiting())
+    caches.open(CACHE_NAME).then(async (cache) => {
+      // cache từng file → lỗi cái nào bỏ qua cái đó
+      await Promise.allSettled(
+        ASSETS.map((url) => cache.add(url))
+      );
+    }).then(() => self.skipWaiting())
   );
 });
 
-// Kích hoạt SW và dọn dẹp cache cũ
+
+// ===== ACTIVATE =====
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            return caches.delete(cache);
-          }
+    caches.keys().then((names) =>
+      Promise.all(
+        names.map((name) => {
+          if (name !== CACHE_NAME) return caches.delete(name);
         })
-      );
-    }).then(() => self.clients.claim())
+      )
+    ).then(() => self.clients.claim())
   );
 });
 
-// Phản hồi yêu cầu mạng bằng cache (ưu tiên Cache, sau đó mới đến Network)
+
+// ===== FETCH =====
 self.addEventListener('fetch', (event) => {
+  const req = event.request;
+
+  if (req.method !== 'GET') return;
+
+  // HTML → Network first
+  if (req.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(req, copy));
+          return res;
+        })
+        .catch(() =>
+          caches.match(req).then((res) => res || caches.match('/index.html'))
+        )
+    );
+    return;
+  }
+
+  // Asset → Cache first
   event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        return response || fetch(event.request);
-      })
+    caches.match(req).then((res) => {
+      return (
+        res ||
+        fetch(req).then((net) => {
+          const copy = net.clone();
+          caches.open(CACHE_NAME).then((c) => c.put(req, copy));
+          return net;
+        }).catch(() => res)
+      );
+    })
   );
 });
