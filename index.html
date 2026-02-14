@@ -357,7 +357,7 @@
         const replaceInput = document.getElementById('replaceInput');
         const findCountDisplay = document.getElementById('findCount');
         const autoSavePrompt = document.getElementById('autoSavePrompt');
-
+        
 
         let fileHandle = null;
         let isMarkdown = false;
@@ -838,6 +838,14 @@ window.addEventListener('keydown', (e) => {
     }
     location.reload();
 }
+
+        document.addEventListener('keydown', (e) => {
+    // Ctrl + N
+    if (e.ctrlKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        newFile();
+    }
+});
 
     </script>
     
