@@ -683,6 +683,7 @@ contentInput.addEventListener('keydown', (e) => {
         let inputTimer;
         contentInput.addEventListener('input', () => { 
             isSaved = false;
+            updateWindowTitle();
             renderPreview(); handleInput();
             updateWordCount();
             if (findReplaceBar.style.display === 'flex') performSearch();
