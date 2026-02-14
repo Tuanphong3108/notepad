@@ -227,6 +227,12 @@
         <div class="menu-item" onclick="handleMenuAction('select-all')"><span class="material-symbols-outlined">select_all</span>Chọn tất cả <span class="ml-auto text-[10px] opacity-50">Ctrl+A</span></div>
         <hr class="my-1 border-black/5">
         <div class="menu-item" onclick="toggleFindReplace()"><span class="material-symbols-outlined">search</span>Tìm kiếm & Thay thế <span class="ml-auto text-[10px] opacity-50">Ctrl+F</span></div>
+        <hr class="my-1 border-black/5">
+<div class="menu-item" onclick="restartApp()">
+    <span class="material-symbols-outlined">restart_alt</span>
+    Khởi động lại
+</div>
+
     </div>
 
     <header class="app-header">
@@ -256,10 +262,23 @@
         <div class="flex items-center gap-3 flex-shrink-0">
             <div id="saveStatus" class="text-[#381E72] opacity-0 transition-opacity"><span class="material-symbols-outlined text-lg">sync_saved_locally</span></div>
             <div class="flex items-center gap-3">
-                <div id="autoSaveContainer" class="hidden items-center gap-2">
-                    <label class="switch"><input type="checkbox" id="autoSaveToggle"><span class="slider"></span></label>
-                    <span class="hidden md:inline text-[10px] font-black uppercase text-[#21005D]">Auto Save</span>
-                </div>
+<div id="autoSaveContainer" class="hidden items-center gap-2">
+
+    <!-- WORD COUNT -->
+    <span id="wordCount" class="text-[11px] font-bold text-black/40">0 ký tự</span>
+
+    <label class="switch">
+        <input type="checkbox" id="autoSaveToggle">
+        <span class="slider"></span>
+    </label>
+
+    <span class="hidden md:inline text-[10px] font-black uppercase text-[#21005D]">
+        Auto Save
+    </span>
+
+</div>
+
+
             </div>
             <div class="w-[1px] h-6 bg-black/10"></div>
             <button id="moreOptionsBtn" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">more_vert</span></button>
@@ -316,6 +335,7 @@
 </div>
 
     <script>
+        const wordCount = document.getElementById('wordCount');
         const contentInput = document.getElementById('noteContent');
         const searchHighlights = document.getElementById('searchHighlights');
         const previewPane = document.getElementById('previewPane');
@@ -392,6 +412,7 @@
 
                 updateSaveUI();
                 renderPreview();
+                updateWordCount();
                 showToast(`Đã mở: ${file.name}`);
             } catch (err) {
                 showToast("Không thể mở file!");
@@ -623,6 +644,7 @@ function enableAutoSave() {
         contentInput.addEventListener('input', () => { 
             isSaved = false;
             renderPreview(); handleInput();
+            updateWordCount();
             if (findReplaceBar.style.display === 'flex') performSearch();
             clearTimeout(inputTimer);
             inputTimer = setTimeout(() => history.push(contentInput.value), 500);
@@ -717,6 +739,7 @@ async function saveFileAs() {
             fileHandle = null; titleInput.value = ''; contentInput.value = '';
             history.push(""); checkFileType(""); updateSaveUI(); showToast("Tệp mới!");
             renderPreview();
+            updateWordCount();
         }
 
         let autoSaveTimeout = null;
@@ -734,6 +757,33 @@ async function saveFileAs() {
     }
 });
 
+
+       function updateWordCount() {
+    const text = contentInput.value;
+
+    const chars = text.length;
+    const words = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+
+    wordCount.textContent = `${chars} ký tự • ${words} từ`;
+}
+
+        // --- Block all manual reload attempts ---
+window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+
+    // F5 hoặc Ctrl+R hoặc Ctrl+Shift+R
+    if (key === 'f5' || (e.ctrlKey && key === 'r')) {
+        e.preventDefault();
+    }
+});
+
+    function restartApp() {
+    if (!isSaved) {
+        const ok = confirm("Nội dung chưa được lưu. Bạn vẫn muốn khởi động lại?");
+        if (!ok) return;
+    }
+    location.reload();
+}
 
     </script>
     
