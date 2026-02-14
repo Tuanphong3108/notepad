@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notepad-md3-v3';
+const CACHE_NAME = 'notepad-md3-v4';
 const ASSETS = [
   '/',
   '/index.html',
