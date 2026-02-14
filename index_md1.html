@@ -7,8 +7,8 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="icon.png">
     <!-- PWA Manifest Link -->
-    <link rel="manifest" href="manifest_md1.json">
-    <meta name="theme-color" content="#1976D2">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
     
     <!-- Google Sans Flex & Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;700&family=Google+Sans+Code:wght@400;700&display=swap" rel="stylesheet">
@@ -161,14 +161,17 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.4);
             font-weight: bold;
         }
-        input:checked + .slider { background-color: rgba(33, 150, 243, 0.5); } /* Light Blue track */
-        input:checked + .slider:before { 
+        input:checked + .slider { 
+            background-color: rgba(33, 150, 243, 0.7); /* Sáng hơn! */
+        }
+          input:checked + .slider:before { 
             content: "check"; 
             transform: translateX(24px); 
-            background-color: var(--md-primary); /* Blue Thumb */
-            color: white; 
+            background-color: #42A5F5; /* Light Blue 400 - sáng hơn! */
+            color: white;
+            box-shadow: 0 2px 4px rgba(33, 150, 243, 0.5); /* Thêm glow */
         }
-
+    
         /* --- Find & Replace Bar (Card Style) --- */
         #findReplaceBar {
             display: none;
@@ -293,6 +296,10 @@
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.4); }
+
+        #previewPane.active { 
+    display: block !important; 
+}
     </style>
 </head>
 <body>
@@ -932,10 +939,6 @@ window.addEventListener('keydown', (e) => {
 });
 
     function restartApp() {
-    if (!isSaved) {
-        const ok = confirm("Nội dung chưa được lưu. Bạn vẫn muốn khởi động lại?");
-        if (!ok) return;
-    }
     location.reload();
 }
 
