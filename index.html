@@ -855,16 +855,15 @@ window.addEventListener('keydown', (e) => {
     }
 });
 
-        function updateWindowTitle() {
-    let name = titleInput.value.trim();
+function updateWindowTitle() {
+    let name = titleInput.value.trim() || "No_name.txt";
 
-    if (!name) {
-        document.title = "No_name.txt";
-        return;
-    }
+    // nếu chưa lưu thì thêm dấu ● phía trước
+    const unsavedMark = isSaved ? "" : "● ";
 
-    document.title = name;
+    document.title = unsavedMark + name;
 }
+
 
     </script>
     
