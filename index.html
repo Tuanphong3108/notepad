@@ -612,33 +612,72 @@ function enableAutoSave() {
             }
         }
 
-        contentInput.addEventListener('keydown', (e) => {
-            const cursor = contentInput.selectionStart, end = contentInput.selectionEnd;
-            if (e.ctrlKey && e.key === 'z') { e.preventDefault(); handleMenuAction('undo'); return; }
-            if (e.ctrlKey && e.key === 'y') { e.preventDefault(); handleMenuAction('redo'); return; }
-            if (e.ctrlKey) {
-                if (e.key === 's') { e.preventDefault(); saveFile(); }
-                if (e.key === 'o') { e.preventDefault(); openFile(); }
-                if (e.key === 'n') { e.preventDefault(); newFile(); }
-                if (e.key === 'f') { e.preventDefault(); toggleFindReplace(); }
+contentInput.addEventListener('keydown', (e) => {
+    const cursor = contentInput.selectionStart, end = contentInput.selectionEnd;
+
+    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); handleMenuAction('undo'); return; }
+    if (e.ctrlKey && e.key === 'y') { e.preventDefault(); handleMenuAction('redo'); return; }
+
+    if (e.ctrlKey) {
+        if (e.key === 's' && !e.shiftKey) { 
+            e.preventDefault(); 
+            saveFile(); 
+            return;
+        }
+
+        // ⭐ Ctrl + Shift + S → Lưu tệp mới
+        if (e.key === 'S' || (e.key === 's' && e.shiftKey)) {
+            e.preventDefault();
+            saveFileAs();   // nhớ phải có hàm này nha
+            return;
+        }
+
+        if (e.key === 'o') { e.preventDefault(); openFile(); return; }
+
+        // ⭐ Ctrl + N → kiểm tra chưa lưu
+        if (e.key === 'n') {
+            e.preventDefault();
+
+            if (!isSaved) {
+                const confirmNew = confirm("Tệp chưa được lưu. Vẫn tạo tệp mới?");
+                if (!confirmNew) return;
             }
-            if (e.key === 'Escape' && findReplaceBar.style.display === 'flex') toggleFindReplace();
-            if (e.key === 'Tab') {
-                e.preventDefault();
-                contentInput.value = contentInput.value.substring(0, cursor) + "    " + contentInput.value.substring(end);
-                contentInput.setSelectionRange(cursor + 4, cursor + 4);
-                history.push(contentInput.value);
-            }
-            if (cursor === end) {
-                const pairs = { '"': '"', "'": "'", "(": ")", "[": "]", "{": "}", "`": "`", "*": "*", "_": "_" };
-                if (pairs[e.key]) {
-                    e.preventDefault();
-                    contentInput.value = contentInput.value.substring(0, cursor) + e.key + pairs[e.key] + contentInput.value.substring(cursor);
-                    contentInput.setSelectionRange(cursor + 1, cursor + 1);
-                    history.push(contentInput.value);
-                }
-            }
-        });
+
+            newFile();
+            return;
+        }
+
+        if (e.key === 'f') { e.preventDefault(); toggleFindReplace(); return; }
+    }
+
+    if (e.key === 'Escape' && findReplaceBar.style.display === 'flex') toggleFindReplace();
+
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        contentInput.value =
+            contentInput.value.substring(0, cursor) +
+            "    " +
+            contentInput.value.substring(end);
+
+        contentInput.setSelectionRange(cursor + 4, cursor + 4);
+        history.push(contentInput.value);
+    }
+
+    if (cursor === end) {
+        const pairs = { '"': '"', "'": "'", "(": ")", "[": "]", "{": "}", "`": "`", "*": "*", "_": "_" };
+        if (pairs[e.key]) {
+            e.preventDefault();
+            contentInput.value =
+                contentInput.value.substring(0, cursor) +
+                e.key + pairs[e.key] +
+                contentInput.value.substring(cursor);
+
+            contentInput.setSelectionRange(cursor + 1, cursor + 1);
+            history.push(contentInput.value);
+        }
+    }
+});
+
 
         let inputTimer;
         contentInput.addEventListener('input', () => { 
@@ -735,12 +774,27 @@ async function saveFileAs() {
 }
 
 
-        function newFile() {
-            fileHandle = null; titleInput.value = ''; contentInput.value = '';
-            history.push(""); checkFileType(""); updateSaveUI(); showToast("Tệp mới!");
-            renderPreview();
-            updateWordCount();
-        }
+function newFile() {
+    // Nếu chưa lưu thì hỏi trước
+    if (!isSaved) {
+        const confirmNew = confirm("Tệp chưa được lưu. Bạn có muốn tạo tệp mới không?");
+        if (!confirmNew) return;
+    }
+
+    // Reset file
+    fileHandle = null;
+    titleInput.value = '';
+    contentInput.value = '';
+
+    history.push("");
+    checkFileType("");
+    isSaved = true;          // quan trọng nè
+    updateSaveUI();
+
+    renderPreview();
+    updateWordCount();
+}
+
 
         let autoSaveTimeout = null;
         function handleInput() {
