@@ -1,8 +1,12 @@
-const CACHE_NAME = 'notepad-md3-v6';
+const CACHE_NAME = 'notepad-md3-v7';
 
 const ASSETS = [
   '/',
   '/index.html',
+  '/manifest.json',
+  '/index_md1.html',
+  '/manifest_md1.json',
+  '/icon.png',
 
   // CDN – vẫn cache nhưng xử lý an toàn
   'https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..1000&family=Google+Sans+Code:wght@400;700&display=swap',
