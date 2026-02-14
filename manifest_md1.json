@@ -1,0 +1,30 @@
+{
+  "name": "Notepad MD1",
+  "short_name": "Notepad",
+  "description": "Ứng dụng ghi chú phong cách Material Design 1",
+  "start_url": "./index_md1.html",
+  "display": "standalone",
+  "background_color": "#FEF7FF",
+  "theme_color": "#6750A4",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "./index_md1.html",
+      "accept": {
+        "text/plain": [".txt"],
+        "text/markdown": [".md"],
+        "text/html": [".html", ".htm"],
+        "text/javascript": [".js"],
+        "application/json": [".json"],
+        "text/css": [".css"]
+      }
+    }
+  ]
+}
