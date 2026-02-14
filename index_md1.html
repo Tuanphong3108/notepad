@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notepad MD1 Classic</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="icon.png">
+    <!-- PWA Manifest Link -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#2196F3">
+    
+    <!-- Google Sans Flex & Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;700&family=Google+Sans+Code:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    
+    <style>
+        /* --- MD1 CLASSIC THEME OVERRIDE --- */
+        :root {
+            /* Palette MD1 chuẩn Android 5.0 */
+            --md-primary: #2196F3;       /* Blue 500 */
+            --md-primary-dark: #1976D2;  /* Blue 700 */
+            --md-accent: #FF4081;        /* Pink A200 */
+            --md-bg: #E0E0E0;            /* Grey 300 */
+            --md-surface: #FFFFFF;
+            --md-text: rgba(0,0,0,0.87);
+            --md-text-secondary: rgba(0,0,0,0.54);
+            --md-divider: rgba(0,0,0,0.12);
+            
+            /* Shadows MD1 (Z-Depth) */
+            --shadow-z1: 0 2px 5px 0 rgba(0,0,0,0.16), 0 2px 10px 0 rgba(0,0,0,0.12);
+            --shadow-z2: 0 5px 11px 0 rgba(0,0,0,0.18), 0 4px 15px 0 rgba(0,0,0,0.15);
+            --shadow-z3: 0 8px 17px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+            --shadow-menu: 0 2px 10px rgba(0,0,0,0.2);
+        }
+
+        body {
+            font-family: 'Google Sans Flex', sans-serif; /* Giữ font nhưng style MD1 */
+            background-color: var(--md-bg);
+            color: var(--md-text);
+            margin: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- Menus (Context & More) --- */
+        #contextMenu, #moreOptionsMenu {
+            position: fixed;
+            display: none;
+            background: var(--md-surface);
+            border-radius: 2px; /* Góc vuông hơn MD3 */
+            box-shadow: var(--shadow-menu);
+            z-index: 1000;
+            min-width: 200px;
+            padding: 8px 0;
+            border: none;
+            animation: fadeIn 0.1s ease-out;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .menu-item {
+            padding: 0 16px;
+            height: 48px; /* Chuẩn touch target MD1 */
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            cursor: pointer;
+            font-size: 15px;
+            color: var(--md-text);
+            transition: background 0.2s;
+        }
+
+        .menu-item:hover:not(.disabled) { background: rgba(0,0,0,0.05); }
+        .menu-item .material-symbols-outlined { font-size: 20px; color: var(--md-text-secondary); }
+
+        /* --- Header (AppBar) --- */
+        .app-header {
+            height: 56px; /* Chuẩn chiều cao AppBar mobile MD1 */
+            background-color: var(--md-primary) !important;
+            box-shadow: var(--shadow-z1);
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10;
+            color: white;
+            border-bottom: none;
+        }
+
+        /* Logo & Branding - Override Tailwind inline colors */
+        #brandLogo { color: white !important; transition: all 0.3s ease; }
+        #brandText { font-weight: 500 !important; font-size: 20px !important; letter-spacing: 0.15px; }
+        #brandIcon { color: white !important; }
+
+        /* Actions Buttons in AppBar */
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            height: 40px;
+            min-width: 40px;
+            border-radius: 50%; /* Circle buttons in toolbar */
+            transition: background 0.2s;
+            cursor: pointer;
+            color: white !important; /* Force white icon */
+            background: transparent !important;
+            overflow: hidden;
+        }
+        
+        .action-btn:hover:not(.disabled) { background-color: rgba(255,255,255,0.15) !important; }
+        .action-btn .action-label { display: none; } /* MD1 toolbar icons don't show labels usually */
+        
+        /* Input Title */
+        #noteTitle {
+            color: white !important;
+            font-size: 18px !important;
+            font-weight: 500 !important;
+            border-bottom: 1px solid rgba(255,255,255,0.5) !important;
+            padding-bottom: 2px;
+        }
+        #noteTitle:focus { border-bottom-color: white !important; }
+        #noteTitle::placeholder { color: rgba(255,255,255,0.6) !important; }
+
+        /* --- Toolbar MD (Format bar) --- */
+        #mdToolbar {
+            background: white !important;
+            border-radius: 2px !important;
+            box-shadow: var(--shadow-z1);
+            border: none !important;
+            margin-right: 16px;
+        }
+        #mdToolbar .action-btn {
+            color: var(--md-text-secondary) !important;
+            border-radius: 2px !important; /* Square-ish buttons for format bar */
+            width: 36px;
+        }
+        #mdToolbar .action-btn:hover { background-color: rgba(0,0,0,0.05) !important; }
+
+        /* --- Overshoot Switch (Yêu cầu giữ nguyên) --- */
+        .switch { position: relative; display: inline-block; width: 44px !important; height: 20px !important; flex-shrink: 0; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #9E9E9E; /* Grey inactive */
+            transition: .4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border-radius: 20px;
+        }
+        .slider:before {
+            position: absolute; content: "close"; font-family: 'Material Symbols Outlined';
+            font-size: 14px; display: flex; align-items: center; justify-content: center;
+            height: 24px; width: 24px; left: -2px; bottom: -2px;
+            background-color: #FAFAFA; color: #757575;
+            transition: .4s cubic-bezier(0.175, 0.885, 0.32, 1.275); border-radius: 50%;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+            font-weight: bold;
+        }
+        input:checked + .slider { background-color: rgba(33, 150, 243, 0.5); } /* Light Blue track */
+        input:checked + .slider:before { 
+            content: "check"; 
+            transform: translateX(24px); 
+            background-color: var(--md-primary); /* Blue Thumb */
+            color: white; 
+        }
+
+        /* --- Find & Replace Bar (Card Style) --- */
+        #findReplaceBar {
+            display: none;
+            background-color: #FAFAFA;
+            padding: 8px 16px;
+            gap: 8px;
+            align-items: center;
+            border-bottom: 1px solid var(--md-divider);
+            box-shadow: var(--shadow-z1);
+            flex-wrap: wrap;
+            z-index: 5;
+        }
+        
+        .fr-input-container {
+            display: flex;
+            align-items: center;
+            background: white;
+            border-radius: 2px;
+            height: 36px;
+            border: none;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 180px;
+        }
+        .fr-input-container:focus-within { box-shadow: 0 0 0 2px var(--md-primary); }
+        .fr-input { border: none; outline: none; flex: 1; font-size: 14px; padding: 0 8px; background: transparent; }
+
+        /* --- Editor Area (Paper Sheet) --- */
+        #editorArea { 
+            display: flex; flex-grow: 1; overflow: hidden; position: relative; 
+            background: var(--md-bg);
+            padding: 16px;
+        }
+        
+        .editor-wrapper { 
+            position: relative; flex: 1; display: flex; overflow: hidden; 
+            background: white;
+            box-shadow: var(--shadow-z1);
+            border-radius: 2px;
+        }
+        
+        #noteContent, #searchHighlights {
+            padding: 24px; /* Classic padding */
+            font-family: 'Google Sans Code', monospace;
+            line-height: 1.6;
+        }
+        
+        #noteContent { 
+            z-index: 2; 
+            color: rgba(0,0,0,0.87); 
+            background: transparent;
+            border: none;
+            resize: none;
+            flex: 1;
+            outline: none;
+        }
+
+        #searchHighlights mark { background-color: #FFEB3B; color: black; border-bottom: none; }
+        #searchHighlights mark.current { background-color: #FF9800; border-bottom: 2px solid #E65100; }
+
+        #previewPane { 
+            flex: 1; padding: 24px; overflow-y: auto; background-color: white; 
+            display: none; border-left: 1px solid var(--md-divider);
+        }
+
+        /* Markdown Styles */
+        .markdown-body h1 { color: var(--md-primary); border-bottom: 1px solid var(--md-divider); }
+        .markdown-body pre { background: #263238; color: #ECEFF1; border-radius: 2px; }
+
+        /* Toast MD1 (Snackbar) */
+        #toast { 
+            visibility: hidden; 
+            min-width: 288px; 
+            background: #323232; 
+            color: white; 
+            border-radius: 2px; 
+            padding: 14px 24px; 
+            position: fixed; 
+            left: 24px; /* Bottom Left standard */
+            bottom: 24px; 
+            z-index: 100; 
+            font-size: 14px;
+            box-shadow: var(--shadow-z1);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            transform: translateY(100px);
+            opacity: 0;
+        }
+        #toast.show { visibility: visible; transform: translateY(0); opacity: 1; }
+        
+        /* --- CSS Spinner (Thay thế GIF) --- */
+        #loading { 
+            background: rgba(255,255,255,0.9) !important; 
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 5px solid rgba(33, 150, 243, 0.2);
+            border-top-color: var(--md-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        /* Auto Save Prompt Card */
+        #autoSavePrompt > div {
+            border-radius: 2px !important;
+            box-shadow: var(--shadow-z3) !important;
+        }
+        #autoSavePrompt h2 { color: var(--md-primary); }
+        #autoSavePrompt button.bg-\[\#6750A4\] {
+            background-color: var(--md-primary) !important; /* Force Blue */
+            box-shadow: var(--shadow-z1);
+            text-transform: uppercase;
+        }
+        
+        /* Utility overrides */
+        .text-\[\#381E72\] { color: white !important; } /* Save Status icon */
+        .text-\[\#21005D\] { color: white !important; opacity: 0.9; } /* Auto save text */
+        .text-black\/40 { color: rgba(255,255,255,0.7) !important; } /* Word count in header */
+        
+        /* Custom Scrollbar for MD1 feel */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.4); }
+    </style>
+</head>
+<body>
+
+    <!-- Context & More Menus -->
+    <div id="contextMenu">
+        <div class="menu-item" onclick="handleMenuAction('undo')"><span class="material-symbols-outlined">undo</span>Hoàn tác</div>
+        <div class="menu-item" onclick="handleMenuAction('redo')"><span class="material-symbols-outlined">redo</span>Làm lại</div>
+        <div style="height: 1px; background: #e0e0e0; margin: 4px 0;"></div>
+        <div class="menu-item" onclick="toggleFindReplace()"><span class="material-symbols-outlined">search</span>Tìm kiếm & Thay thế</div>
+        <div style="height: 1px; background: #e0e0e0; margin: 4px 0;"></div>
+        <div class="menu-item" onclick="handleMenuAction('cut')"><span class="material-symbols-outlined">content_cut</span>Cắt</div>
+        <div class="menu-item" onclick="handleMenuAction('copy')"><span class="material-symbols-outlined">content_copy</span>Sao chép</div>
+        <div class="menu-item" onclick="handleMenuAction('paste')"><span class="material-symbols-outlined">content_paste</span>Dán</div>
+        <div class="menu-item" onclick="handleMenuAction('select-all')"><span class="material-symbols-outlined">select_all</span>Chọn tất cả</div>
+    </div>
+
+    <div id="moreOptionsMenu">
+        <div class="menu-item" onclick="handleMenuAction('undo')"><span class="material-symbols-outlined">undo</span>Hoàn tác <span class="ml-auto text-xs opacity-50">Ctrl+Z</span></div>
+        <div class="menu-item" onclick="handleMenuAction('redo')"><span class="material-symbols-outlined">redo</span>Làm lại <span class="ml-auto text-xs opacity-50">Ctrl+Y</span></div>
+        <div style="height: 1px; background: #e0e0e0; margin: 4px 0;"></div>
+        <div class="menu-item" onclick="handleMenuAction('cut')"><span class="material-symbols-outlined">content_cut</span>Cắt <span class="ml-auto text-xs opacity-50">Ctrl+X</span></div>
+        <div class="menu-item" onclick="handleMenuAction('copy')"><span class="material-symbols-outlined">content_copy</span>Sao chép <span class="ml-auto text-xs opacity-50">Ctrl+C</span></div>
+        <div class="menu-item" onclick="handleMenuAction('paste')"><span class="material-symbols-outlined">content_paste</span>Dán <span class="ml-auto text-xs opacity-50">Ctrl+V</span></div>
+        <div class="menu-item" onclick="handleMenuAction('select-all')"><span class="material-symbols-outlined">select_all</span>Chọn tất cả <span class="ml-auto text-xs opacity-50">Ctrl+A</span></div>
+        <div style="height: 1px; background: #e0e0e0; margin: 4px 0;"></div>
+        <div class="menu-item" onclick="toggleFindReplace()"><span class="material-symbols-outlined">search</span>Tìm kiếm <span class="ml-auto text-xs opacity-50">Ctrl+F</span></div>
+        <div style="height: 1px; background: #e0e0e0; margin: 4px 0;"></div>
+        <div class="menu-item" onclick="restartApp()">
+            <span class="material-symbols-outlined">restart_alt</span>
+            Khởi động lại
+        </div>
+    </div>
+
+    <header class="app-header">
+        <div class="flex items-center gap-2 overflow-hidden flex-shrink-0">
+            <div id="brandLogo" class="flex items-center mr-2">
+                <span id="brandIcon" class="material-symbols-outlined text-3xl flex-shrink-0 mr-2">description</span>
+                <span id="brandText" class="font-bold text-xl tracking-tight">Notepad</span>
+            </div>
+            
+            <div class="flex items-center gap-1">
+                <button onclick="newFile()" class="action-btn" title="Mới"><span class="material-symbols-outlined">note_add</span></button>
+                <button onclick="openFile()" class="action-btn" title="Mở"><span class="material-symbols-outlined">file_open</span></button>
+                <button id="mainSaveBtn" onclick="saveFile()" class="action-btn hidden" title="Lưu"><span class="material-symbols-outlined">save</span></button>
+                <button id="saveAsBtn" onclick="saveFileAs()" class="action-btn" title="Lưu mới"><span class="material-symbols-outlined">save_as</span></button>
+            </div>
+            <div class="w-[1px] h-6 bg-white/30 mx-2"></div>
+            <input type="text" id="noteTitle" readonly placeholder="Không tên" class="bg-transparent outline-none border-none text-left w-24 sm:w-32 lg:w-48 transition-colors" autocomplete="off">
+        </div>
+
+        <div id="mdToolbar" class="hidden sm:flex items-center gap-0.5 px-2 py-1 opacity-0 transition-all">
+            <button onclick="insertMD('**', '**')" class="action-btn text-gray-600"><span class="material-symbols-outlined">format_bold</span></button>
+            <button onclick="insertMD('*', '*')" class="action-btn text-gray-600"><span class="material-symbols-outlined">format_italic</span></button>
+            <button onclick="insertMD('# ', '')" class="action-btn text-gray-600"><span class="material-symbols-outlined">format_size</span></button>
+            <button onclick="insertMD('`', '`')" class="action-btn text-gray-600"><span class="material-symbols-outlined">code</span></button>
+        </div>
+
+        <div class="flex items-center gap-3 flex-shrink-0">
+            <div id="saveStatus" class="opacity-0 transition-opacity"><span class="material-symbols-outlined text-lg text-white">sync_saved_locally</span></div>
+            <div class="flex items-center gap-3">
+                <div id="autoSaveContainer" class="hidden items-center gap-2">
+                    <!-- WORD COUNT -->
+                    <span id="wordCount" class="text-[11px] font-bold text-white/70">0 ký tự</span>
+
+                    <label class="switch">
+                        <input type="checkbox" id="autoSaveToggle">
+                        <span class="slider"></span>
+                    </label>
+
+                    <span class="hidden md:inline text-[10px] font-bold uppercase text-white">
+                        Auto Save
+                    </span>
+                </div>
+            </div>
+            <div class="w-[1px] h-6 bg-white/30"></div>
+            <button id="moreOptionsBtn" class="action-btn"><span class="material-symbols-outlined">more_vert</span></button>
+        </div>
+    </header>
+
+    <!-- Find & Replace Bar -->
+    <div id="findReplaceBar">
+        <div class="fr-input-container">
+            <span class="material-symbols-outlined text-gray-400 pl-2">search</span>
+            <input type="text" id="findInput" class="fr-input" placeholder="Tìm kiếm...">
+            <span id="findCount" class="text-[10px] font-bold text-gray-400 mr-2">0/0</span>
+            <button onclick="findNext(false)" class="p-1 hover:bg-gray-200 rounded-full"><span class="material-symbols-outlined text-lg">keyboard_arrow_up</span></button>
+            <button onclick="findNext(true)" class="p-1 hover:bg-gray-200 rounded-full"><span class="material-symbols-outlined text-lg">keyboard_arrow_down</span></button>
+        </div>
+        <div class="fr-input-container">
+            <span class="material-symbols-outlined text-gray-400 pl-2">find_replace</span>
+            <input type="text" id="replaceInput" class="fr-input" placeholder="Thay thế bằng...">
+            <button onclick="replaceOne()" class="text-[10px] font-bold uppercase px-2 py-1 hover:bg-gray-200 rounded text-blue-600">Thay</button>
+            <button onclick="replaceAll()" class="text-[10px] font-bold uppercase px-2 py-1 hover:bg-gray-200 rounded text-blue-600">Hết</button>
+        </div>
+        <button onclick="toggleFindReplace()" class="p-2 hover:bg-gray-200 rounded-full ml-auto"><span class="material-symbols-outlined text-gray-600">close</span></button>
+    </div>
+
+    <main id="editorArea">
+        <div class="editor-wrapper">
+            <div id="searchHighlights"></div>
+            <textarea id="noteContent" spellcheck="false" placeholder="Bắt đầu viết..."></textarea>
+        </div>
+        <div id="previewPane" class="markdown-body"></div>
+    </main>
+
+    <div id="toast">Thông báo</div>
+    
+    <!-- CSS Spinner Loading -->
+    <div id="loading" class="fixed inset-0 flex flex-col items-center justify-center z-[100] hidden">
+        <div class="spinner"></div>
+        <p class="mt-4 font-bold text-[#2196F3] uppercase tracking-widest text-xs">Đang xử lý</p>
+    </div>
+
+    <div id="autoSavePrompt" class="fixed inset-0 bg-black/40 flex items-center justify-center z-[200] hidden">
+        <div class="bg-white rounded p-6 w-[320px]">
+            <h2 class="text-lg font-bold mb-2">Bật Tự động lưu?</h2>
+            <p class="text-sm text-gray-600 mb-6 leading-relaxed">
+                Nội dung sẽ được lưu liên tục. Bạn sẽ không cần bấm nút Lưu nữa.
+            </p>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeAutoSavePrompt()" class="px-4 py-2 rounded hover:bg-gray-100 font-bold text-sm text-gray-600 uppercase">
+                    Không
+                </button>
+                <button onclick="enableAutoSave()" class="px-4 py-2 rounded bg-[#2196F3] text-white font-bold text-sm uppercase shadow-md hover:shadow-lg transition-shadow">
+                    Bật ngay
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- START OF PRESERVED LOGIC -->
+    <script>
+        const wordCount = document.getElementById('wordCount');
+        const contentInput = document.getElementById('noteContent');
+        const searchHighlights = document.getElementById('searchHighlights');
+        const previewPane = document.getElementById('previewPane');
+        const contextMenu = document.getElementById('contextMenu');
+        const moreOptionsMenu = document.getElementById('moreOptionsMenu');
+        const moreOptionsBtn = document.getElementById('moreOptionsBtn');
+        const brandLogo = document.getElementById('brandLogo');
+        const titleInput = document.getElementById('noteTitle');
+        const mainSaveBtn = document.getElementById('mainSaveBtn');
+        const autoSaveToggle = document.getElementById('autoSaveToggle');
+        const autoSaveContainer = document.getElementById('autoSaveContainer');
+        const spellCheckToggle = document.getElementById('spellCheckToggle');
+        const toast = document.getElementById('toast');
+        const mdToolbar = document.getElementById('mdToolbar');
+        const saveStatus = document.getElementById('saveStatus');
+        const loading = document.getElementById('loading');
+        const findReplaceBar = document.getElementById('findReplaceBar');
+        const findInput = document.getElementById('findInput');
+        const replaceInput = document.getElementById('replaceInput');
+        const findCountDisplay = document.getElementById('findCount');
+        const autoSavePrompt = document.getElementById('autoSavePrompt');
+        
+
+        let fileHandle = null;
+        let isMarkdown = false;
+        let searchResults = [];
+        let currentSearchIndex = -1;
+        let isSaved = true;
+
+        // Custom History Manager
+        const history = {
+            stack: [""],
+            pointer: 0,
+            push(val) {
+                if (val === this.stack[this.pointer]) return;
+                this.stack = this.stack.slice(0, this.pointer + 1);
+                this.stack.push(val);
+                if (this.stack.length > 50) this.stack.shift();
+                else this.pointer++;
+            },
+            undo() {
+                if (this.pointer > 0) return this.stack[--this.pointer];
+                return null;
+            },
+            redo() {
+                if (this.pointer < this.stack.length - 1) return this.stack[++this.pointer];
+                return null;
+            }
+        };
+
+        // --- NEW: PWA launchQueue handling ---
+        if ('launchQueue' in window) {
+            window.launchQueue.setConsumer(async (launchParams) => {
+                if (launchParams.files.length > 0) {
+                    const handle = launchParams.files[0];
+                    await loadFileFromHandle(handle);
+                }
+            });
+        }
+
+        async function loadFileFromHandle(handle) {
+            fileHandle = handle;
+            loading.classList.remove('hidden');
+            try {
+                const file = await fileHandle.getFile();
+                const text = await file.text();
+                contentInput.value = text;
+                history.push(text);
+                titleInput.value = file.name;
+                updateWindowTitle();   // ← PHẦN C NẰM NGAY ĐÂY
+                checkFileType(file.name);
+                if (!autoSaveToggle.checked) {
+                    showAutoSavePrompt();
+                }
+                isSaved = true;
+                updateSaveUI();
+                renderPreview();
+                updateWordCount();
+                showToast(`Đã mở: ${file.name}`);
+            } catch (err) {
+                showToast("Không thể mở file!");
+            } finally {
+                loading.classList.add('hidden');
+            }
+        }
+
+        // Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+        }
+
+        // UI Events
+        moreOptionsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const rect = moreOptionsBtn.getBoundingClientRect();
+            moreOptionsMenu.style.display = 'block';
+            moreOptionsMenu.style.right = (window.innerWidth - rect.right) + 'px';
+            moreOptionsMenu.style.top = (rect.bottom + 8) + 'px';
+        });
+
+        window.addEventListener('click', () => { 
+            contextMenu.style.display = 'none'; 
+            moreOptionsMenu.style.display = 'none';
+        });
+
+        // Search Engine
+        function toggleFindReplace() {
+            const isVisible = findReplaceBar.style.display === 'flex';
+            findReplaceBar.style.display = isVisible ? 'none' : 'flex';
+            if (!isVisible) { findInput.focus(); performSearch(); } 
+            else { contentInput.focus(); searchHighlights.innerHTML = ""; }
+        }
+
+        findInput.addEventListener('input', performSearch);
+        contentInput.addEventListener('scroll', () => {
+            searchHighlights.scrollTop = contentInput.scrollTop;
+            searchHighlights.scrollLeft = contentInput.scrollLeft;
+        });
+
+        function performSearch() {
+            const query = findInput.value;
+            const text = contentInput.value;
+            if (!query) { 
+                searchResults = []; currentSearchIndex = -1; searchHighlights.innerHTML = ""; updateSearchUI(); return; 
+            }
+            searchResults = [];
+            let pos = 0;
+            const lowerText = text.toLowerCase();
+            const lowerQuery = query.toLowerCase();
+            while ((pos = lowerText.indexOf(lowerQuery, pos)) !== -1) {
+                searchResults.push({ start: pos, end: pos + query.length });
+                pos += query.length;
+            }
+            let highlightedHtml = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            if (searchResults.length > 0) {
+                const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(`(${escapedQuery})`, 'gi');
+                let i = 0;
+                highlightedHtml = highlightedHtml.replace(regex, (match) => {
+                    const isCurrent = (i === currentSearchIndex);
+                    const html = `<mark class="${isCurrent ? 'current' : ''}">${match}</mark>`;
+                    i++; return html;
+                });
+                if (currentSearchIndex === -1) currentSearchIndex = 0;
+                highlightResult();
+            } else { currentSearchIndex = -1; }
+            searchHighlights.innerHTML = highlightedHtml + "\n\n";
+            updateSearchUI();
+        }
+
+        function updateSearchUI() {
+            findCountDisplay.innerText = searchResults.length === 0 ? "0/0" : `${currentSearchIndex + 1}/${searchResults.length}`;
+        }
+
+        function findNext(forward = true) {
+            if (searchResults.length === 0) return;
+            currentSearchIndex = forward ? (currentSearchIndex + 1) % searchResults.length : (currentSearchIndex - 1 + searchResults.length) % searchResults.length;
+            performSearch();
+        }
+
+        function highlightResult() {
+            if (currentSearchIndex === -1 || searchResults.length === 0) return;
+            const result = searchResults[currentSearchIndex];
+            contentInput.setSelectionRange(result.start, result.end);
+            const lineHeight = parseInt(window.getComputedStyle(contentInput).lineHeight);
+            const linesBefore = contentInput.value.substring(0, result.start).split('\n').length;
+            const scrollTarget = (linesBefore * lineHeight) - (contentInput.clientHeight / 2);
+            contentInput.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+        }
+
+        function replaceOne() {
+            if (currentSearchIndex === -1) return;
+            const result = searchResults[currentSearchIndex];
+            const newVal = replaceInput.value;
+            contentInput.value = contentInput.value.substring(0, result.start) + newVal + contentInput.value.substring(result.end);
+            history.push(contentInput.value);
+            performSearch(); renderPreview(); handleInput();
+        }
+
+        function replaceAll() {
+            const query = findInput.value;
+            if (!query) return;
+            const regex = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            const matches = contentInput.value.match(regex);
+            if (!matches) return;
+            contentInput.value = contentInput.value.replace(regex, replaceInput.value);
+            history.push(contentInput.value);
+            performSearch(); renderPreview(); handleInput();
+            showToast(`Đã thay thế ${matches.length} vị trí!`);
+        }
+
+        // Clipboard & Actions
+        window.addEventListener('contextmenu', (e) => {
+            if (e.target.id !== 'noteContent' && e.target.id !== 'previewPane') return;
+            e.preventDefault();
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = Math.min(e.pageX, window.innerWidth - 230) + 'px';
+            contextMenu.style.top = Math.min(e.pageY, window.innerHeight - 300) + 'px';
+        });
+
+        async function handleMenuAction(action) {
+            contentInput.focus();
+            const start = contentInput.selectionStart;
+            const end = contentInput.selectionEnd;
+            const selectedText = contentInput.value.substring(start, end);
+
+            switch(action) {
+                case 'undo': 
+                    const prev = history.undo();
+                    if (prev !== null) { contentInput.value = prev; renderPreview(); handleInput(); }
+                    break;
+                case 'redo':
+                    const next = history.redo();
+                    if (next !== null) { contentInput.value = next; renderPreview(); handleInput(); }
+                    break;
+                case 'cut':
+                    if (start !== end) {
+                        await navigator.clipboard.writeText(selectedText);
+                        contentInput.value = contentInput.value.substring(0, start) + contentInput.value.substring(end);
+                        history.push(contentInput.value);
+                        renderPreview(); handleInput();
+                    }
+                    break;
+                case 'copy':
+                    if (start !== end) await navigator.clipboard.writeText(selectedText);
+                    break;
+                case 'paste': 
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        contentInput.setRangeText(text, start, end, 'end');
+                        history.push(contentInput.value);
+                        renderPreview(); handleInput();
+                    } catch (err) { showToast("Cần cấp quyền Clipboard!"); }
+                    break;
+                case 'select-all': contentInput.select(); break;
+            }
+        }
+
+        function showToast(msg) {
+            toast.innerText = msg; toast.classList.add("show");
+            setTimeout(() => { toast.classList.remove("show"); }, 3000);
+        }
+
+        function showAutoSavePrompt() {
+    autoSavePrompt.classList.remove('hidden');
+}
+
+function closeAutoSavePrompt() {
+    autoSavePrompt.classList.add('hidden');
+}
+
+function enableAutoSave() {
+    autoSaveToggle.checked = true;
+    closeAutoSavePrompt();
+}
+
+
+        setTimeout(() => { brandLogo.classList.add('collapsed'); }, 2000);
+
+        function renderPreview() {
+            if (isMarkdown) {
+                const dirty = marked.parse(contentInput.value);
+                previewPane.innerHTML = DOMPurify.sanitize(dirty);
+            }
+        }
+
+        function updateSaveUI() {
+            const hasHandle = !!fileHandle;
+            if (hasHandle && 'showOpenFilePicker' in window) {
+                autoSaveContainer.style.display = 'flex';
+                mainSaveBtn.classList.remove('hidden');
+            } else {
+                autoSaveContainer.style.display = 'none';
+                mainSaveBtn.classList.add('hidden');
+            }
+        }
+
+contentInput.addEventListener('keydown', (e) => {
+    const cursor = contentInput.selectionStart, end = contentInput.selectionEnd;
+
+    if (e.ctrlKey && e.key === 'z') { e.preventDefault(); handleMenuAction('undo'); return; }
+    if (e.ctrlKey && e.key === 'y') { e.preventDefault(); handleMenuAction('redo'); return; }
+
+    if (e.ctrlKey) {
+        if (e.key === 's' && !e.shiftKey) { 
+            e.preventDefault(); 
+            saveFile(); 
+            return;
+        }
+
+        // ⭐ Ctrl + Shift + S → Lưu tệp mới
+        if (e.key === 'S' || (e.key === 's' && e.shiftKey)) {
+            e.preventDefault();
+            saveFileAs();   // nhớ phải có hàm này nha
+            return;
+        }
+
+        if (e.key === 'o') { e.preventDefault(); openFile(); return; }
+
+        // ⭐ Ctrl + N → kiểm tra chưa lưu
+        if (e.key === 'n') {
+            e.preventDefault();
+
+            if (!isSaved) {
+                const confirmNew = confirm("Tệp chưa được lưu. Vẫn tạo tệp mới?");
+                if (!confirmNew) return;
+            }
+
+            newFile();
+            return;
+        }
+
+        if (e.key === 'f') { e.preventDefault(); toggleFindReplace(); return; }
+    }
+
+    if (e.key === 'Escape' && findReplaceBar.style.display === 'flex') toggleFindReplace();
+
+    if (e.key === 'Tab') {
+        e.preventDefault();
+        contentInput.value =
+            contentInput.value.substring(0, cursor) +
+            "    " +
+            contentInput.value.substring(end);
+
+        contentInput.setSelectionRange(cursor + 4, cursor + 4);
+        history.push(contentInput.value);
+    }
+
+    if (cursor === end) {
+        const pairs = { '"': '"', "'": "'", "(": ")", "[": "]", "{": "}", "`": "`", "*": "*", "_": "_" };
+        if (pairs[e.key]) {
+            e.preventDefault();
+            contentInput.value =
+                contentInput.value.substring(0, cursor) +
+                e.key + pairs[e.key] +
+                contentInput.value.substring(cursor);
+
+            contentInput.setSelectionRange(cursor + 1, cursor + 1);
+            history.push(contentInput.value);
+        }
+    }
+});
+
+
+        let inputTimer;
+        contentInput.addEventListener('input', () => { 
+            isSaved = false;
+            updateWindowTitle();
+            renderPreview(); handleInput();
+            updateWordCount();
+            if (findReplaceBar.style.display === 'flex') performSearch();
+            clearTimeout(inputTimer);
+            inputTimer = setTimeout(() => history.push(contentInput.value), 500);
+        });
+
+        function checkFileType(fileName) {
+            isMarkdown = fileName.toLowerCase().endsWith('.md');
+            if (isMarkdown) {
+                mdToolbar.classList.replace('opacity-0', 'opacity-100');
+                mdToolbar.classList.remove('pointer-events-none');
+                previewPane.classList.add('active');
+            } else {
+                mdToolbar.classList.replace('opacity-100', 'opacity-0');
+                mdToolbar.classList.add('pointer-events-none');
+                previewPane.classList.remove('active');
+            }
+        }
+
+        function insertMD(prefix, suffix) {
+            const start = contentInput.selectionStart, end = contentInput.selectionEnd;
+            contentInput.value = contentInput.value.substring(0, start) + prefix + contentInput.value.substring(start, end) + suffix + contentInput.value.substring(end);
+            contentInput.focus();
+            const newPos = start + prefix.length + (end - start);
+            contentInput.setSelectionRange(newPos, newPos);
+            history.push(contentInput.value);
+            renderPreview();
+        }
+
+   async function openFile() {
+    try {
+        const [handle] = await window.showOpenFilePicker({
+            types: [
+                {
+                    description: "Supported text/code files",
+                    accept: {
+                        "text/plain": [".txt", ".md", ".json"],
+                        "text/html": [".html", ".htm"],
+                        "text/css": [".css"],
+                        "application/javascript": [".js"],
+                        "application/x-bat": [".bat"],
+                        "text/x-python": [".py"],
+                        "text/x-powershell": [".ps1"]
+                    }
+                }
+            ],
+            excludeAcceptAllOption: true,
+            multiple: false
+        });
+
+        await loadFileFromHandle(handle);
+    } catch (err) {}
+}
+
+
+        async function saveFile() {
+            if (!fileHandle) return saveFileAs();
+            try {
+                const writable = await fileHandle.createWritable();
+                await writable.write(contentInput.value);
+                await writable.close();
+        
+                isSaved = true;
+                updateWindowTitle();
+                saveStatus.style.opacity = '1';
+                setTimeout(() => { saveStatus.style.opacity = '0'; }, 1500);
+            } catch (err) { showToast("Lỗi ghi file!"); }
+        }
+
+async function saveFileAs() {
+    try {
+        fileHandle = await window.showSaveFilePicker({
+            suggestedName: "no_name.txt",
+            types: [
+                {
+                    description: "Text file",
+                    accept: { "text/plain": [".txt"] }
+                }
+            ]
+        });
+
+        await saveFile();
+
+        const file = await fileHandle.getFile();
+        titleInput.value = file.name;   // ← giữ nguyên extension
+        checkFileType(file.name);
+        updateSaveUI();
+        updateWindowTitle();            // ← NÉM Ở ĐÂY
+
+    } catch (err) {}
+}
+
+
+
+function newFile() {
+    // Nếu chưa lưu thì hỏi trước
+    if (!isSaved) {
+        const confirmNew = confirm("Tệp chưa được lưu. Bạn có muốn tạo tệp mới không?");
+        if (!confirmNew) return;
+    }
+
+    // Reset file
+    fileHandle = null;
+    contentInput.value = '';
+
+    history.push("");
+    checkFileType("");
+
+    // đặt tên mặc định SAU khi reset
+    titleInput.value = "No_name.txt";
+    updateWindowTitle();
+
+    isSaved = true;
+    updateSaveUI();
+
+    renderPreview();
+    updateWordCount();
+}
+
+
+        let autoSaveTimeout = null;
+        function handleInput() {
+            if (autoSaveToggle.checked && fileHandle) {
+                clearTimeout(autoSaveTimeout);
+                autoSaveTimeout = setTimeout(saveFile, 1000);
+            }
+        }
+
+        window.addEventListener('beforeunload', (e) => {
+    if (!isSaved) {
+        e.preventDefault();
+        e.returnValue = '';
+    }
+});
+
+
+       function updateWordCount() {
+    const text = contentInput.value;
+
+    const chars = text.length;
+    const words = text.trim() === "" ? 0 : text.trim().split(/\s+/).length;
+
+    wordCount.textContent = `${chars} ký tự • ${words} từ`;
+}
+
+        // --- Block all manual reload attempts ---
+window.addEventListener('keydown', (e) => {
+    const key = e.key.toLowerCase();
+
+    // F5 hoặc Ctrl+R hoặc Ctrl+Shift+R
+    if (key === 'f5' || (e.ctrlKey && key === 'r')) {
+        e.preventDefault();
+    }
+});
+
+    function restartApp() {
+    if (!isSaved) {
+        const ok = confirm("Nội dung chưa được lưu. Bạn vẫn muốn khởi động lại?");
+        if (!ok) return;
+    }
+    location.reload();
+}
+
+        document.addEventListener('keydown', (e) => {
+    // Ctrl + N
+    if (e.ctrlKey && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        newFile();
+    }
+});
+
+function updateWindowTitle() {
+    let name = titleInput.value.trim() || "Notepad MD3 Expressive";
+
+    // nếu chưa lưu thì thêm dấu ● phía trước
+    const unsavedMark = isSaved ? "" : "● ";
+
+    document.title = unsavedMark + name;
+}
+
+
+    </script>
+    
+</body>
+</html>
