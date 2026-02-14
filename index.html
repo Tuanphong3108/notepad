@@ -404,12 +404,13 @@
                 const text = await file.text();
                 contentInput.value = text;
                 history.push(text);
-                titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+                titleInput.value = file.name;
+                updateWindowTitle();   // ← PHẦN C NẰM NGAY ĐÂY
                 checkFileType(file.name);
                 if (!autoSaveToggle.checked) {
                     showAutoSavePrompt();
                 }
-
+                isSaved = true;
                 updateSaveUI();
                 renderPreview();
                 updateWordCount();
@@ -746,6 +747,7 @@ contentInput.addEventListener('keydown', (e) => {
                 await writable.close();
         
                 isSaved = true;
+                updateWindowTitle();
                 saveStatus.style.opacity = '1';
                 setTimeout(() => { saveStatus.style.opacity = '0'; }, 1500);
             } catch (err) { showToast("Lỗi ghi file!"); }
@@ -766,12 +768,14 @@ async function saveFileAs() {
         await saveFile();
 
         const file = await fileHandle.getFile();
-        titleInput.value = file.name.replace(/\.[^/.]+$/, "");
+        titleInput.value = file.name;   // ← giữ nguyên extension
         checkFileType(file.name);
         updateSaveUI();
+        updateWindowTitle();            // ← NÉM Ở ĐÂY
 
     } catch (err) {}
 }
+
 
 
 function newFile() {
@@ -783,12 +787,16 @@ function newFile() {
 
     // Reset file
     fileHandle = null;
-    titleInput.value = '';
     contentInput.value = '';
 
     history.push("");
     checkFileType("");
-    isSaved = true;          // quan trọng nè
+
+    // đặt tên mặc định SAU khi reset
+    titleInput.value = "No_name.txt";
+    updateWindowTitle();
+
+    isSaved = true;
     updateSaveUI();
 
     renderPreview();
@@ -846,6 +854,17 @@ window.addEventListener('keydown', (e) => {
         newFile();
     }
 });
+
+        function updateWindowTitle() {
+    let name = titleInput.value.trim();
+
+    if (!name) {
+        document.title = "No_name.txt";
+        return;
+    }
+
+    document.title = name;
+}
 
     </script>
     
