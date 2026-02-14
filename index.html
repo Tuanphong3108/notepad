@@ -839,14 +839,11 @@ window.addEventListener('keydown', (e) => {
         e.preventDefault();
     }
 });
-
-    function restartApp() {
-    if (!isSaved) {
-        const ok = confirm("Nội dung chưa được lưu. Bạn vẫn muốn khởi động lại?");
-        if (!ok) return;
-    }
+        
+function restartApp() {
     location.reload();
 }
+
 
         document.addEventListener('keydown', (e) => {
     // Ctrl + N
