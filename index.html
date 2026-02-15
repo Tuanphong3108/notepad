@@ -357,7 +357,13 @@
         const replaceInput = document.getElementById('replaceInput');
         const findCountDisplay = document.getElementById('findCount');
         const autoSavePrompt = document.getElementById('autoSavePrompt');
-        
+        const SUPPORTED_EXTENSIONS = [
+    ".txt", ".md", ".json",
+    ".html", ".htm",
+    ".css", ".js",
+    ".bat", ".py", ".ps1"
+];
+
 
         let fileHandle = null;
         let isMarkdown = false;
@@ -396,50 +402,54 @@
             });
         }
         
-        // --- Drag & Drop file support ---
-window.addEventListener("dragover", (e) => {
-    e.preventDefault();
-});
-
-window.addEventListener("drop", async (e) => {
+   window.addEventListener("drop", async (e) => {
     e.preventDefault();
 
     const items = e.dataTransfer.items;
     if (!items) return;
 
     for (const item of items) {
-        if (item.kind === "file") {
+        if (item.kind !== "file") continue;
 
-            // ⭐ Ưu tiên lấy FileSystemHandle (Chrome, Edge mới)
-            const handle = await item.getAsFileSystemHandle?.();
+        // lấy tên file để kiểm tra extension
+        const file = item.getAsFile();
+        if (!file) continue;
 
-            if (handle && handle.kind === "file") {
-                await loadFileFromHandle(handle);
-            } else {
-                // ⭐ Fallback blob (Firefox, Chrome cũ…)
-                const file = item.getAsFile();
-                if (!file) continue;
+        const lowerName = file.name.toLowerCase();
+        const isSupported = SUPPORTED_EXTENSIONS.some(ext => lowerName.endsWith(ext));
 
-                fileHandle = null; // không có quyền ghi
-                const text = await file.text();
-
-                contentInput.value = text;
-                history.push(text);
-                titleInput.value = file.name;
-                checkFileType(file.name);
-
-                isSaved = true;
-                updateSaveUI();
-                renderPreview();
-                updateWordCount();
-
-                showToast(`Đã mở: ${file.name}`);
-            }
-
-            break; // chỉ mở file đầu tiên
+        if (!isSupported) {
+            showToast("Định dạng file không được hỗ trợ!");
+            return;
         }
+
+        // ⭐ ưu tiên FileSystemHandle
+        const handle = await item.getAsFileSystemHandle?.();
+
+        if (handle && handle.kind === "file") {
+            await loadFileFromHandle(handle);
+        } else {
+            // fallback blob
+            fileHandle = null;
+            const text = await file.text();
+
+            contentInput.value = text;
+            history.push(text);
+            titleInput.value = file.name;
+            checkFileType(file.name);
+
+            isSaved = true;
+            updateSaveUI();
+            renderPreview();
+            updateWordCount();
+
+            showToast(`Đã mở: ${file.name}`);
+        }
+
+        break; // chỉ mở 1 file
     }
 });
+
 
 
         async function loadFileFromHandle(handle) {
