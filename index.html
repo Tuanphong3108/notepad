@@ -395,6 +395,52 @@
                 }
             });
         }
+        
+        // --- Drag & Drop file support ---
+window.addEventListener("dragover", (e) => {
+    e.preventDefault();
+});
+
+window.addEventListener("drop", async (e) => {
+    e.preventDefault();
+
+    const items = e.dataTransfer.items;
+    if (!items) return;
+
+    for (const item of items) {
+        if (item.kind === "file") {
+
+            // ⭐ Ưu tiên lấy FileSystemHandle (Chrome, Edge mới)
+            const handle = await item.getAsFileSystemHandle?.();
+
+            if (handle && handle.kind === "file") {
+                await loadFileFromHandle(handle);
+            } else {
+                // ⭐ Fallback blob (Firefox, Chrome cũ…)
+                const file = item.getAsFile();
+                if (!file) continue;
+
+                fileHandle = null; // không có quyền ghi
+                const text = await file.text();
+
+                contentInput.value = text;
+                history.push(text);
+                titleInput.value = file.name;
+                checkFileType(file.name);
+
+                isSaved = true;
+                updateSaveUI();
+                renderPreview();
+                updateWordCount();
+
+                showToast(`Đã mở: ${file.name}`);
+            }
+
+            break; // chỉ mở file đầu tiên
+        }
+    }
+});
+
 
         async function loadFileFromHandle(handle) {
             fileHandle = handle;
