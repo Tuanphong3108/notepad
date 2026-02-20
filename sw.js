@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notepad-md3-v7';
+const CACHE_NAME = 'notepad-md3-v8';
 
 const ASSETS = [
   '/',
@@ -12,7 +12,8 @@ const ASSETS = [
   'https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..1000&family=Google+Sans+Code:wght@400;700&display=swap',
   'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200',
   'https://cdn.tailwindcss.com',
-  'https://cdn.jsdelivr.net/npm/marked/marked.min.js',
+  'https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js',
+  'https://cdn.jsdelivr.net/npm/markdown-it-task-lists/dist/markdown-it-task-lists.min.js',
   'https://tuanphong3108.github.io/md3-loading/Loading_Indicator.gif'
 ];
 
