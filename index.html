@@ -14,7 +14,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..1000&family=Google+Sans+Code:wght@400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it-task-lists/dist/markdown-it-task-lists.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
     
     <style>
@@ -200,6 +201,44 @@
         #toast.show { visibility: visible; }
         
         #loading img { filter: brightness(0) saturate(100%) invert(35%) sepia(21%) font-family(53%) hue-rotate(217deg) brightness(96%) contrast(91%); }
+
+    .markdown-body h2 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  margin-top: 1.5rem;
+}
+
+.markdown-body h3 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-top: 1rem;
+}
+
+.markdown-body ul {
+  padding-left: 1.5rem;
+  list-style: disc;
+}
+
+.markdown-body code {
+  background: #F3EDF7;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: 'Google Sans Code', monospace;
+}
+
+.markdown-body pre {
+  background: #1e1e1e;
+  color: #ffffff; /* ← QUAN TRỌNG */
+  padding: 16px;
+  border-radius: 16px;
+  overflow-x: auto;
+}
+
+.markdown-body pre code {
+  background: transparent;
+  color: inherit; /* kế thừa màu trắng */
+  font-family: 'Google Sans Code', monospace;
+}
     </style>
 </head>
 <body>
@@ -363,6 +402,17 @@
     ".css", ".js",
     ".bat", ".py", ".ps1"
 ];
+        const md = window.markdownit({
+    html: false,        // không cho raw HTML
+    linkify: true,      // tự động nhận diện link
+    typographer: true,  // smart quotes
+    breaks: true        // xuống dòng = <br>
+});
+
+// Nếu dùng task list
+if (window.markdownitTaskLists) {
+    md.use(window.markdownitTaskLists);
+}
 
 
         let fileHandle = null;
@@ -651,12 +701,12 @@ function enableAutoSave() {
 
         setTimeout(() => { brandLogo.classList.add('collapsed'); }, 2000);
 
-        function renderPreview() {
-            if (isMarkdown) {
-                const dirty = marked.parse(contentInput.value);
-                previewPane.innerHTML = DOMPurify.sanitize(dirty);
-            }
-        }
+function renderPreview() {
+    if (isMarkdown) {
+        const dirty = md.render(contentInput.value);
+        previewPane.innerHTML = DOMPurify.sanitize(dirty);
+    }
+}
 
         function updateSaveUI() {
             const hasHandle = !!fileHandle;
