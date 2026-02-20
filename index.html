@@ -296,6 +296,31 @@
             <button onclick="insertMD('*', '*')" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">format_italic</span></button>
             <button onclick="insertMD('# ', '')" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">format_size</span></button>
             <button onclick="insertMD('`', '`')" class="action-btn !max-w-[40px] text-[#49454F]"><span class="material-symbols-outlined">code</span></button>
+
+            <!-- Strike -->
+<button onclick="insertMD('~~','~~')" class="action-btn !max-w-[40px] text-[#49454F]">
+    <span class="material-symbols-outlined">format_strikethrough</span>
+</button>
+
+<!-- Bullet List -->
+<button onclick="insertLinePrefix('- ')" class="action-btn !max-w-[40px] text-[#49454F]">
+    <span class="material-symbols-outlined">format_list_bulleted</span>
+</button>
+
+<!-- Task List -->
+<button onclick="insertLinePrefix('- [ ] ')" class="action-btn !max-w-[40px] text-[#49454F]">
+    <span class="material-symbols-outlined">check_box</span>
+</button>
+
+<!-- Horizontal Rule -->
+<button onclick="insertMD('\n---\n','')" class="action-btn !max-w-[40px] text-[#49454F]">
+    <span class="material-symbols-outlined">horizontal_rule</span>
+</button>
+
+<!-- Code Block -->
+<button onclick="insertCodeBlock()" class="action-btn !max-w-[40px] text-[#49454F]">
+    <span class="material-symbols-outlined">code_blocks</span>
+</button>
         </div>
 
         <div class="flex items-center gap-3 flex-shrink-0">
@@ -810,15 +835,29 @@ contentInput.addEventListener('keydown', (e) => {
             }
         }
 
-        function insertMD(prefix, suffix) {
-            const start = contentInput.selectionStart, end = contentInput.selectionEnd;
-            contentInput.value = contentInput.value.substring(0, start) + prefix + contentInput.value.substring(start, end) + suffix + contentInput.value.substring(end);
-            contentInput.focus();
-            const newPos = start + prefix.length + (end - start);
-            contentInput.setSelectionRange(newPos, newPos);
-            history.push(contentInput.value);
-            renderPreview();
-        }
+function insertMD(prefix, suffix) {
+    const start = contentInput.selectionStart;
+    const end = contentInput.selectionEnd;
+    const value = contentInput.value;
+
+    const selected = value.substring(start, end);
+
+    // toggle nếu đã có
+    if (selected.startsWith(prefix) && selected.endsWith(suffix)) {
+        contentInput.value =
+            value.substring(0, start) +
+            selected.slice(prefix.length, selected.length - suffix.length) +
+            value.substring(end);
+    } else {
+        contentInput.value =
+            value.substring(0, start) +
+            prefix + selected + suffix +
+            value.substring(end);
+    }
+
+    history.push(contentInput.value);
+    renderPreview();
+}
 
    async function openFile() {
     try {
@@ -969,6 +1008,40 @@ function updateWindowTitle() {
 }
 
 
+function insertLinePrefix(prefix) {
+    const start = contentInput.selectionStart;
+    const end = contentInput.selectionEnd;
+    const value = contentInput.value;
+
+    const before = value.substring(0, start);
+    const selected = value.substring(start, end);
+    const after = value.substring(end);
+
+    const lines = selected.split('\n').map(line => prefix + line);
+
+    contentInput.value = before + lines.join('\n') + after;
+
+    history.push(contentInput.value);
+    renderPreview();
+}
+
+function insertCodeBlock() {
+    const start = contentInput.selectionStart;
+    const end = contentInput.selectionEnd;
+    const value = contentInput.value;
+
+    const selected = value.substring(start, end) || "code here";
+
+    const block = `\n\`\`\`\n${selected}\n\`\`\`\n`;
+
+    contentInput.value =
+        value.substring(0, start) +
+        block +
+        value.substring(end);
+
+    history.push(contentInput.value);
+    renderPreview();
+}
     </script>
     
 </body>
