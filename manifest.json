@@ -1,14 +1,27 @@
 {
   "name": "Notepad MD3 Expressive",
   "short_name": "Notepad",
-  "description": "Ứng dụng ghi chú phong cách Material Design 3 có Multi-tab",
+  "description": "Ứng dụng ghi chú phong cách Material Design 3 với chế độ Tabbed PWA",
   "start_url": "./index.html",
   "display": "standalone",
+  "display_override": [
+    "tabbed",
+    "standalone"
+  ],
+  "tab_strip": {
+    "home_tab": {
+      "scope_patterns": [
+        {
+          "pathname": "/index.html"
+        }
+      ]
+    },
+    "new_tab_button": {
+      "url": "./index.html"
+    }
+  },
   "background_color": "#FEF7FF",
   "theme_color": "#6750A4",
-  "launch_handler": {
-    "client_mode": "focus-existing"
-  },
   "icons": [
     {
       "src": "icon.png",
@@ -21,13 +34,29 @@
     {
       "action": "./index.html",
       "accept": {
-        "text/plain": [".txt"],
-        "text/markdown": [".md"],
-        "text/html": [".html", ".htm"],
-        "text/javascript": [".js"],
-        "application/json": [".json"],
-        "text/css": [".css"]
+        "text/plain": [
+          ".txt"
+        ],
+        "text/markdown": [
+          ".md"
+        ],
+        "text/html": [
+          ".html",
+          ".htm"
+        ],
+        "text/javascript": [
+          ".js"
+        ],
+        "application/json": [
+          ".json"
+        ],
+        "text/css": [
+          ".css"
+        ]
       }
     }
-  ]
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-new"
+  }
 }
