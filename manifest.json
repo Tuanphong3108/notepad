@@ -1,11 +1,14 @@
 {
   "name": "Notepad MD3 Expressive",
   "short_name": "Notepad",
-  "description": "Ứng dụng ghi chú phong cách Material Design 3",
+  "description": "Ứng dụng ghi chú phong cách Material Design 3 có Multi-tab",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#FEF7FF",
   "theme_color": "#6750A4",
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
   "icons": [
     {
       "src": "icon.png",
