@@ -1,9 +1,19 @@
 {
   "name": "Notepad MD1",
-  "short_name": "Notepad",
-  "description": "Ứng dụng ghi chú phong cách Material Design 1",
+  "short_name": "Notepad MD1",
+  "description": "Ứng dụng ghi chú phong cách Material Design 1 với chế độ Tabbed PWA",
   "start_url": "./index_md1.html",
   "display": "standalone",
+  "display_override": [
+    "tabbed",
+    "standalone",
+    "browser"
+  ],
+  "tab_strip": {
+    "new_tab_button": {
+      "url": "./index_md1.html"
+    }
+  },
   "background_color": "#FEF7FF",
   "theme_color": "#6750A4",
   "icons": [
@@ -18,13 +28,18 @@
     {
       "action": "./index_md1.html",
       "accept": {
-        "text/plain": [".txt"],
+        "text/plain": [".txt", ".bat", ".ps1"],
         "text/markdown": [".md"],
         "text/html": [".html", ".htm"],
         "text/javascript": [".js"],
         "application/json": [".json"],
-        "text/css": [".css"]
+        "text/css": [".css"],
+        "text/x-python": [".py"]
       }
     }
-  ]
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-new"
+  },
+  "scope": "/"
 }
