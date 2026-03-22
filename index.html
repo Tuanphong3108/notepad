@@ -1043,33 +1043,30 @@ function insertCodeBlock() {
 }
 
 
-        function updatePWAThemeColor() {
-    // Tìm thẻ meta theme-color
-    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-    
-    // Nếu bro đã xóa ở head, đoạn này sẽ tự tạo mới lại
-    if (!metaThemeColor) {
-        metaThemeColor = document.createElement('meta');
-        metaThemeColor.name = "theme-color";
-        document.getElementsByTagName('head')[0].appendChild(metaThemeColor);
-    }
-    
-    // Check môi trường
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                  window.matchMedia('(display-mode: tabbed)').matches ||
-                  window.navigator.standalone === true;
+const tabbedMedia = window.matchMedia('(display-mode: tabbed)');
 
-    if (isPWA) {
-        // Màu cho Tabbed PWA (Sáng - Primary Container)
-        metaThemeColor.setAttribute('content', '#EADDFF');
+function updateThemeColor(e) {
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+        meta = document.createElement('meta');
+        meta.name = "theme-color";
+        document.head.appendChild(meta);
+    }
+
+    if (e.matches) {
+        // Đang ở chế độ Tabbed
+        meta.setAttribute('content', '#EADDFF');
     } else {
-        // Màu cho Browser (Đậm - Primary)
-        metaThemeColor.setAttribute('content', '#6750A4');
+        // Đang ở Browser hoặc Standalone thường
+        meta.setAttribute('content', '#6750A4');
     }
 }
 
-// Chạy lệnh
-updatePWAThemeColor();
+// Chạy lần đầu khi load
+updateThemeColor(tabbedMedia);
+
+// Lắng nghe khi thay đổi chế độ hiển thị
+tabbedMedia.addEventListener('change', updateThemeColor);
     </script>
     
 </body>
