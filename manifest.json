@@ -7,7 +7,6 @@
   "display_override": [
     "tabbed",
     "standalone",
-    "browser"
   ],
   "tab_strip": {
     "new_tab_button": {
