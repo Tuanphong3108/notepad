@@ -12,7 +12,7 @@
     "home_tab": {
       "scope_patterns": [
         {
-          "pathname": "/index.html"
+          "pathname": "/about.html"
         }
       ]
     },
