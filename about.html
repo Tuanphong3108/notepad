@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giới thiệu - Notepad MD3 Expressive</title>
+    
+    <!-- Google Sans Flex & Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..1000&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        :root {
+            --md-sys-color-primary: #6750A4;
+            --md-sys-color-on-primary: #FFFFFF;
+            --md-sys-color-primary-container: #EADDFF;
+            --md-sys-color-on-primary-container: #21005D;
+            --md-sys-color-surface: #FEF7FF;
+            --md-sys-color-on-surface: #1D1B20;
+            --md-sys-color-surface-variant: #E7E0EB;
+            --md-sys-color-on-surface-variant: #49454F;
+            --md-sys-color-outline: #79747E;
+            --md-sys-color-secondary-container: #E8DEF8;
+        }
+
+        body {
+            font-family: 'Google Sans Flex', sans-serif;
+            background-color: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            line-height: 1.5;
+            padding: 40px 0;
+        }
+
+        .container {
+            max-width: 640px;
+            width: 90%;
+            padding: 40px;
+            background: var(--md-sys-color-surface);
+            border-radius: 32px;
+            animation: slideUp 0.5s cubic-bezier(0.2, 0, 0, 1);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.05);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .app-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .header-icon {
+            font-size: 64px;
+            color: var(--md-sys-color-primary);
+            margin-bottom: 8px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        .version {
+            font-size: 14px;
+            color: var(--md-sys-color-on-surface-variant);
+            background: var(--md-sys-color-secondary-container);
+            padding: 2px 12px;
+            border-radius: 100px;
+            display: inline-block;
+            margin-top: 8px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 24px 0 12px 0;
+            color: var(--md-sys-color-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .feature-card {
+            padding: 16px;
+            background: var(--md-sys-color-surface-variant);
+            border-radius: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            border: 1px solid transparent;
+        }
+
+        .feature-card:hover {
+            background: var(--md-sys-color-primary-container);
+            transform: translateY(-4px);
+            border-color: var(--md-sys-color-outline);
+        }
+
+        .feature-card span.material-symbols-outlined {
+            margin-bottom: 8px;
+            color: var(--md-sys-color-primary);
+        }
+
+        .feature-card h3 {
+            font-size: 15px;
+            margin: 0 0 4px 0;
+            font-weight: 700;
+        }
+
+        .feature-card p {
+            font-size: 13px;
+            margin: 0;
+            color: var(--md-sys-color-on-surface-variant);
+            flex-grow: 1;
+        }
+
+        /* Nút con trong Feature Card */
+        .btn-text {
+            margin-top: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--md-sys-color-primary);
+            cursor: pointer;
+            width: fit-content;
+            padding: 4px 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+        .btn-text:hover {
+            background: rgba(103, 80, 164, 0.1);
+        }
+
+        /* Modal hướng dẫn */
+        #guide-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: var(--md-sys-color-surface);
+            padding: 24px;
+            border-radius: 28px;
+            width: 90%;
+            max-width: 500px;
+            animation: zoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .guide-step {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .step-num {
+            width: 24px;
+            height: 24px;
+            background: var(--md-sys-color-primary);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-text { font-size: 14px; }
+        .step-text code {
+            background: var(--md-sys-color-surface-variant);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .action-area {
+            margin-top: 40px;
+            text-align: center;
+        }
+
+        .btn-fab {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0 28px;
+            height: 56px;
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            border: none;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 16px;
+            cursor: pointer;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .btn-fab:hover {
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            transform: scale(1.02);
+        }
+
+        .btn-fab:active {
+            transform: scale(0.95);
+        }
+
+        .ripple {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.35);
+            border-radius: 50%;
+            transform: scale(0);
+            animation: ripple-animation 0.6s ease-out;
+            pointer-events: none;
+        }
+
+        @keyframes ripple-animation {
+            to { transform: scale(4); opacity: 0; }
+        }
+
+        footer {
+            margin-top: 32px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--md-sys-color-on-surface-variant);
+            opacity: 0.7;
+        }
+
+        @media (max-width: 480px) {
+            .feature-grid { grid-template-columns: 1fr; }
+            .container { padding: 24px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header class="app-header">
+            <span class="material-symbols-outlined header-icon">description</span>
+            <h1>Notepad MD3</h1>
+            <span class="version">v2026.03.21 - Expressive Edition</span>
+        </header>
+
+        <section>
+            <div class="section-title">
+                <span class="material-symbols-outlined">info</span>
+                Tổng quan hệ thống
+            </div>
+            <p style="font-size: 14px; margin-bottom: 24px;">
+                Ứng dụng soạn thảo văn bản hiệu năng cao, tối ưu hóa cho trải nghiệm ghi chú nhanh và xử lý định dạng Markdown. Tích hợp đầy đủ các tiêu chuẩn Progressive Web App (PWA) hiện đại.
+            </p>
+
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <span class="material-symbols-outlined">code</span>
+                    <h3>Markdown Engine</h3>
+                    <p>Trình phân tích cú pháp Markdown thời gian thực với độ trễ cực thấp.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">tab</span>
+                    <h3>Tabbed Interface</h3>
+                    <p>Kiến trúc đa cửa sổ cho phép quản lý nhiều tài liệu cùng lúc.</p>
+                    <div class="btn-text" onclick="showGuide()">
+                        Tìm hiểu thêm
+                        <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
+                    </div>
+                </div>
+                <div class="feature-card">
+                    <span class="material-symbols-outlined">save</span>
+                    <h3>Native File API</h3>
+                    <p>Truy cập và ghi dữ liệu trực tiếp vào hệ thống tệp tin thiết bị.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="material-symbols-outlined">offline_bolt</span>
+                    <h3>Service Worker</h3>
+                    <p>Hoạt động ổn định trong điều kiện ngoại tuyến với bộ nhớ đệm thông minh.</p>
+                </div>
+            </div>
+        </section>
+
+        <div class="action-area">
+            <button class="btn-fab" onclick="handleNewFile(event)">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">add</span>
+                Tạo tệp mới ngay!
+            </button>
+        </div>
+
+        <footer>
+            Công nghệ lõi: JavaScript ES6+, Tailwind CSS, Markdown-it<br>
+            Tương thích tốt nhất trên các nền tảng hỗ trợ PWA và Chromium.
+        </footer>
+    </div>
+
+    <!-- Modal Hướng dẫn -->
+    <div id="guide-modal" onclick="hideGuide(event)">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
+                <span class="material-symbols-outlined">bolt</span>
+                Kích hoạt Tabbed PWAs
+            </h2>
+            
+            <div class="guide-step">
+                <div class="step-num">1</div>
+                <div class="step-text">Gỡ cài đặt Notepad MD3 hiện tại khỏi thiết bị của bạn.</div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">2</div>
+                <div class="step-text">Truy cập <code>chrome://flags/#enable-desktop-pwas-tab-strip</code> và kích hoạt mục được đánh dấu.</div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">3</div>
+                <div class="step-text">Nhập <code>chrome://restart</code> vào thanh địa chỉ để khởi động lại trình duyệt.</div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">4</div>
+                <div class="step-text">Truy cập lại vào <code>tuanphong3108.github.io/notepad</code>.</div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">5</div>
+                <div class="step-text">Nhấn nút <b>"Cài đặt"</b> (icon máy tính có mũi tên xuống) trên thanh địa chỉ.</div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">6</div>
+                <div class="step-text">Xác nhận cài đặt ứng dụng.</div>
+            </div>
+            <div class="guide-step">
+                <div class="step-num">7</div>
+                <div class="step-text"><b>Xong!</b> Hãy tận hưởng trải nghiệm đa tab như một ứng dụng chuyên nghiệp.</div>
+            </div>
+
+            <div style="text-align: right; margin-top: 12px;">
+                <button class="btn-text" onclick="hideGuide()">Đã hiểu</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function createRipple(event) {
+            const button = event.currentTarget;
+            const circle = document.createElement("span");
+            const diameter = Math.max(button.clientWidth, button.clientHeight);
+            const radius = diameter / 2;
+
+            const rect = button.getBoundingClientRect();
+            circle.style.width = circle.style.height = `${diameter}px`;
+            circle.style.left = `${event.clientX - rect.left - radius}px`;
+            circle.style.top = `${event.clientY - rect.top - radius}px`;
+            circle.classList.add("ripple");
+
+            const ripple = button.getElementsByClassName("ripple")[0];
+            if (ripple) { ripple.remove(); }
+            button.appendChild(circle);
+        }
+
+        function handleNewFile(event) {
+            createRipple(event);
+            setTimeout(() => {
+                window.open('index.html', '_blank');
+            }, 200);
+        }
+
+        function showGuide() {
+            document.getElementById('guide-modal').style.display = 'flex';
+        }
+
+        function hideGuide(event) {
+            document.getElementById('guide-modal').style.display = 'none';
+        }
+
+        // Xử lý hiệu ứng FILL cho icons
+        document.querySelectorAll('.material-symbols-outlined').forEach(icon => {
+            if (icon.closest('.btn-fab') || icon.closest('.feature-card h3')) return;
+            
+            icon.addEventListener('mouseenter', () => {
+                icon.style.fontVariationSettings = "'FILL' 1";
+            });
+            icon.addEventListener('mouseleave', () => {
+                // Giữ nguyên fill cho icon Tabbed để làm điểm nhấn
+                if (!icon.closest('.feature-card:nth-child(2)')) {
+                    icon.style.fontVariationSettings = "'FILL' 0";
+                }
+            });
+        });
+    </script>
+</body>
+</html>
