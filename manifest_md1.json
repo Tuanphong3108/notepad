@@ -2,7 +2,7 @@
   "name": "Notepad MD1",
   "short_name": "Notepad MD1",
   "description": "Ứng dụng ghi chú phong cách Material Design 1 với chế độ Tabbed PWA",
-  "start_url": "./index_md1.html",
+  "start_url": "/notepad/index_md1.html",
   "display": "standalone",
   "display_override": [
     "tabbed",
@@ -11,7 +11,7 @@
   ],
   "tab_strip": {
     "new_tab_button": {
-      "url": "./index_md1.html"
+      "url": "/notepad/index_md1.html"
     }
   },
   "background_color": "#FEF7FF",
@@ -26,7 +26,7 @@
   ],
   "file_handlers": [
     {
-      "action": "./index_md1.html",
+      "action": "/notepad/index_md1.html",
       "accept": {
         "text/plain": [".txt", ".bat", ".ps1"],
         "text/markdown": [".md"],
@@ -41,5 +41,5 @@
   "launch_handler": {
     "client_mode": "navigate-new"
   },
-  "scope": "/"
+  "scope": "/notepad/"
 }
