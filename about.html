@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Giới thiệu - Notepad MD3 Expressive</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="icon.png">
+    
     <!-- Google Sans Flex & Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..1000&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
@@ -31,20 +34,21 @@
             margin: 0;
             display: flex;
             justify-content: center;
-            align-items: flex-start;
+            align-items: center; /* Căn giữa theo chiều dọc cho PC */
             min-height: 100vh;
             line-height: 1.5;
-            padding: 40px 0;
+            padding: 20px;
         }
 
         .container {
-            max-width: 640px;
-            width: 90%;
-            padding: 40px;
+            max-width: 800px; /* Tăng độ rộng cho PC */
+            width: 100%;
+            padding: 48px;
             background: var(--md-sys-color-surface);
             border-radius: 32px;
             animation: slideUp 0.5s cubic-bezier(0.2, 0, 0, 1);
             box-shadow: 0 4px 24px rgba(0,0,0,0.05);
+            margin: auto;
         }
 
         @keyframes slideUp {
@@ -54,53 +58,54 @@
 
         .app-header {
             text-align: center;
-            margin-bottom: 32px;
+            margin-bottom: 40px;
         }
 
         .header-icon {
-            font-size: 64px;
+            font-size: 80px; /* To hơn chút trên PC */
             color: var(--md-sys-color-primary);
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
 
         h1 {
-            font-size: 32px;
-            font-weight: 700;
+            font-size: clamp(32px, 5vw, 40px); /* Linh hoạt kích cỡ chữ */
+            font-weight: 800;
             margin: 0;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.03em;
         }
 
         .version {
             font-size: 14px;
             color: var(--md-sys-color-on-surface-variant);
             background: var(--md-sys-color-secondary-container);
-            padding: 2px 12px;
+            padding: 4px 16px;
             border-radius: 100px;
             display: inline-block;
-            margin-top: 8px;
+            margin-top: 12px;
+            font-weight: 500;
         }
 
         .section-title {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 600;
-            margin: 24px 0 12px 0;
+            margin: 32px 0 16px 0;
             color: var(--md-sys-color-primary);
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
         }
 
         .feature-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Tự động chia cột linh hoạt */
+            gap: 20px;
         }
 
         .feature-card {
-            padding: 16px;
+            padding: 24px;
             background: var(--md-sys-color-surface-variant);
-            border-radius: 20px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 24px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
             border: 1px solid transparent;
@@ -108,49 +113,63 @@
 
         .feature-card:hover {
             background: var(--md-sys-color-primary-container);
-            transform: translateY(-4px);
-            border-color: var(--md-sys-color-outline);
+            transform: translateY(-8px) scale(1.02);
+            border-color: var(--md-sys-color-primary);
+            box-shadow: 0 12px 24px rgba(103, 80, 164, 0.15);
         }
 
         .feature-card span.material-symbols-outlined {
-            margin-bottom: 8px;
+            margin-bottom: 12px;
             color: var(--md-sys-color-primary);
+            font-size: 32px;
         }
 
         .feature-card h3 {
-            font-size: 15px;
-            margin: 0 0 4px 0;
+            font-size: 18px;
+            margin: 0 0 8px 0;
             font-weight: 700;
         }
 
         .feature-card p {
-            font-size: 13px;
+            font-size: 14px;
             margin: 0;
             color: var(--md-sys-color-on-surface-variant);
             flex-grow: 1;
+            opacity: 0.9;
         }
 
-        /* Nút con trong Feature Card */
         .btn-text {
-            margin-top: 12px;
+            margin-top: 16px;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            font-size: 13px;
+            gap: 6px;
+            font-size: 14px;
             font-weight: 600;
             color: var(--md-sys-color-primary);
             cursor: pointer;
             width: fit-content;
-            padding: 4px 8px;
-            border-radius: 8px;
-            transition: background 0.2s;
+            padding: 6px 12px;
+            border-radius: 12px;
+            transition: background 0.3s;
         }
 
         .btn-text:hover {
-            background: rgba(103, 80, 164, 0.1);
+            background: rgba(103, 80, 164, 0.12);
         }
 
-        /* Modal hướng dẫn */
+        .more-features {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 24px;
+            font-size: 15px;
+            font-weight: 500;
+            font-style: italic;
+            color: var(--md-sys-color-on-surface-variant);
+            opacity: 0.7;
+            border-top: 1px dashed var(--md-sys-color-outline);
+            margin-top: 12px;
+        }
+
         #guide-modal {
             display: none;
             position: fixed;
@@ -159,53 +178,61 @@
             z-index: 100;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(4px);
+            backdrop-filter: blur(8px);
+            padding: 20px;
         }
 
         .modal-content {
             background: var(--md-sys-color-surface);
-            padding: 24px;
-            border-radius: 28px;
-            width: 90%;
-            max-width: 500px;
-            animation: zoomIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            padding: 32px;
+            border-radius: 32px;
+            width: 100%;
+            max-width: 540px;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: modalIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 24px 48px rgba(0,0,0,0.2);
         }
 
-        @keyframes zoomIn {
-            from { transform: scale(0.8); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
+        @keyframes modalIn {
+            from { transform: scale(0.9) translateY(20px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
         }
 
         .guide-step {
             display: flex;
-            gap: 12px;
-            margin-bottom: 16px;
+            gap: 16px;
+            margin-bottom: 20px;
+            align-items: flex-start;
         }
 
         .step-num {
-            width: 24px;
-            height: 24px;
+            width: 28px;
+            height: 28px;
             background: var(--md-sys-color-primary);
             color: white;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: bold;
             flex-shrink: 0;
+            margin-top: 2px;
         }
 
-        .step-text { font-size: 14px; }
+        .step-text { font-size: 15px; color: var(--md-sys-color-on-surface); }
         .step-text code {
-            background: var(--md-sys-color-surface-variant);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-family: 'Google Sans Code', monospace;
+            font-size: 13px;
         }
 
         .action-area {
-            margin-top: 40px;
+            margin-top: 48px;
             text-align: center;
         }
 
@@ -213,33 +240,34 @@
             position: relative;
             display: inline-flex;
             align-items: center;
-            gap: 12px;
-            padding: 0 28px;
-            height: 56px;
+            gap: 16px;
+            padding: 0 32px;
+            height: 64px;
             background-color: var(--md-sys-color-primary);
             color: var(--md-sys-color-on-primary);
             border: none;
-            border-radius: 16px;
-            font-weight: 600;
-            font-size: 16px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 18px;
             cursor: pointer;
             overflow: hidden;
-            transition: transform 0.2s, box-shadow 0.2s;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            box-shadow: 0 8px 16px rgba(103, 80, 164, 0.25);
         }
 
         .btn-fab:hover {
-            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
-            transform: scale(1.02);
+            box-shadow: 0 12px 28px rgba(103, 80, 164, 0.4);
+            transform: scale(1.05);
+            background-color: #745db4;
         }
 
         .btn-fab:active {
-            transform: scale(0.95);
+            transform: scale(0.98);
         }
 
         .ripple {
             position: absolute;
-            background: rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.4);
             border-radius: 50%;
             transform: scale(0);
             animation: ripple-animation 0.6s ease-out;
@@ -251,16 +279,27 @@
         }
 
         footer {
-            margin-top: 32px;
+            margin-top: 48px;
             text-align: center;
-            font-size: 12px;
+            font-size: 13px;
             color: var(--md-sys-color-on-surface-variant);
-            opacity: 0.7;
+            opacity: 0.8;
+            border-top: 1px solid var(--md-sys-color-surface-variant);
+            padding-top: 24px;
         }
 
-        @media (max-width: 480px) {
+        /* Custom Scrollbar cho Modal trên PC */
+        .modal-content::-webkit-scrollbar { width: 8px; }
+        .modal-content::-webkit-scrollbar-track { background: transparent; }
+        .modal-content::-webkit-scrollbar-thumb { 
+            background: var(--md-sys-color-outline); 
+            border-radius: 10px;
+        }
+
+        @media (max-width: 640px) {
+            .container { padding: 32px 24px; border-radius: 0; height: 100vh; max-height: 100vh; overflow-y: auto;}
+            body { padding: 0; align-items: flex-start; }
             .feature-grid { grid-template-columns: 1fr; }
-            .container { padding: 24px; }
         }
     </style>
 </head>
@@ -270,7 +309,7 @@
         <header class="app-header">
             <span class="material-symbols-outlined header-icon">description</span>
             <h1>Notepad MD3</h1>
-            <span class="version">v2026.03.21 - Expressive Edition</span>
+            <span class="version">v2026.03.22 - Expressive Edition</span>
         </header>
 
         <section>
@@ -278,20 +317,20 @@
                 <span class="material-symbols-outlined">info</span>
                 Tổng quan hệ thống
             </div>
-            <p style="font-size: 14px; margin-bottom: 24px;">
-                Ứng dụng soạn thảo văn bản hiệu năng cao, tối ưu hóa cho trải nghiệm ghi chú nhanh và xử lý định dạng Markdown. Tích hợp đầy đủ các tiêu chuẩn Progressive Web App (PWA) hiện đại.
+            <p style="font-size: 16px; margin-bottom: 32px; color: var(--md-sys-color-on-surface-variant);">
+                Ứng dụng soạn thảo văn bản hiệu năng cao, tối ưu hóa cho trải nghiệm ghi chú nhanh và xử lý định dạng Markdown chuyên nghiệp. Tích hợp đầy đủ các tiêu chuẩn Progressive Web App (PWA) thế hệ mới.
             </p>
 
             <div class="feature-grid">
                 <div class="feature-card">
                     <span class="material-symbols-outlined">code</span>
                     <h3>Markdown Engine</h3>
-                    <p>Trình phân tích cú pháp Markdown thời gian thực với độ trễ cực thấp.</p>
+                    <p>Trình phân tích cú pháp Markdown thời gian thực với độ trễ cực thấp và hỗ trợ Task-list.</p>
                 </div>
                 <div class="feature-card">
                     <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">tab</span>
                     <h3>Tabbed Interface</h3>
-                    <p>Kiến trúc đa cửa sổ cho phép quản lý nhiều tài liệu cùng lúc.</p>
+                    <p>Kiến trúc đa cửa sổ hiện đại, cho phép quản lý và làm việc trên nhiều tài liệu cùng một lúc.</p>
                     <div class="btn-text" onclick="showGuide()">
                         Tìm hiểu thêm
                         <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
@@ -300,12 +339,15 @@
                 <div class="feature-card">
                     <span class="material-symbols-outlined">save</span>
                     <h3>Native File API</h3>
-                    <p>Truy cập và ghi dữ liệu trực tiếp vào hệ thống tệp tin thiết bị.</p>
+                    <p>Truy cập, đọc và ghi dữ liệu trực tiếp vào hệ thống tệp tin trên thiết bị của bạn.</p>
                 </div>
                 <div class="feature-card">
                     <span class="material-symbols-outlined">offline_bolt</span>
                     <h3>Service Worker</h3>
-                    <p>Hoạt động ổn định trong điều kiện ngoại tuyến với bộ nhớ đệm thông minh.</p>
+                    <p>Hoạt động bền bỉ trong điều kiện ngoại tuyến nhờ công nghệ bộ nhớ đệm thông minh v9.</p>
+                </div>
+                <div class="more-features">
+                    Và còn nhiều hơn thế...
                 </div>
             </div>
         </section>
@@ -313,55 +355,55 @@
         <div class="action-area">
             <button class="btn-fab" onclick="handleNewFile(event)">
                 <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">add</span>
-                Tạo tệp mới ngay!
+                Bắt đầu soạn thảo ngay!
             </button>
         </div>
 
         <footer>
-            Công nghệ lõi: JavaScript ES6+, Tailwind CSS, Markdown-it<br>
-            Tương thích tốt nhất trên các nền tảng hỗ trợ PWA và Chromium.
+            Duy trì bởi tuanphong3108 &bull; Công nghệ lõi: JS ES6+, Tailwind, Markdown-it<br>
+            Khuyến nghị sử dụng trên trình duyệt nhân Chromium để có trải nghiệm tốt nhất.
         </footer>
     </div>
 
     <!-- Modal Hướng dẫn -->
     <div id="guide-modal" onclick="hideGuide(event)">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px;">
-                <span class="material-symbols-outlined">bolt</span>
+            <h2 style="font-size: 24px; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; color: var(--md-sys-color-primary);">
+                <span class="material-symbols-outlined" style="font-size: 32px;">bolt</span>
                 Kích hoạt Tabbed PWAs
             </h2>
             
             <div class="guide-step">
                 <div class="step-num">1</div>
-                <div class="step-text">Gỡ cài đặt Notepad MD3 hiện tại khỏi thiết bị của bạn.</div>
+                <div class="step-text">Gỡ cài đặt Notepad MD3 cũ (nếu có) khỏi màn hình chính hoặc thư mục ứng dụng của bạn.</div>
             </div>
             <div class="guide-step">
                 <div class="step-num">2</div>
-                <div class="step-text">Truy cập <code>chrome://flags/#enable-desktop-pwas-tab-strip</code> và kích hoạt mục được đánh dấu.</div>
+                <div class="step-text">Truy cập địa chỉ: <code>chrome://flags/#enable-desktop-pwas-tab-strip</code> và chuyển trạng thái sang <b>Enabled</b>.</div>
             </div>
             <div class="guide-step">
                 <div class="step-num">3</div>
-                <div class="step-text">Nhập <code>chrome://restart</code> vào thanh địa chỉ để khởi động lại trình duyệt.</div>
+                <div class="step-text">Nhập <code>chrome://restart</code> để áp dụng thay đổi (Trình duyệt sẽ khởi động lại).</div>
             </div>
             <div class="guide-step">
                 <div class="step-num">4</div>
-                <div class="step-text">Truy cập lại vào <code>tuanphong3108.github.io/notepad</code>.</div>
+                <div class="step-text">Quay lại <code>tuanphong3108.github.io/notepad</code>.</div>
             </div>
             <div class="guide-step">
                 <div class="step-num">5</div>
-                <div class="step-text">Nhấn nút <b>"Cài đặt"</b> (icon máy tính có mũi tên xuống) trên thanh địa chỉ.</div>
+                <div class="step-text">Tìm biểu tượng <b>Cài đặt ứng dụng</b> (Install App) trên thanh địa chỉ và nhấn vào đó.</div>
             </div>
             <div class="guide-step">
                 <div class="step-num">6</div>
-                <div class="step-text">Xác nhận cài đặt ứng dụng.</div>
+                <div class="step-text">Xác nhận <b>Cài đặt</b> trong hộp thoại hiện lên.</div>
             </div>
             <div class="guide-step">
                 <div class="step-num">7</div>
-                <div class="step-text"><b>Xong!</b> Hãy tận hưởng trải nghiệm đa tab như một ứng dụng chuyên nghiệp.</div>
+                <div class="step-text"><b>Chúc mừng!</b> Bạn đã có giao diện đa tab cực xịn trên desktop.</div>
             </div>
 
-            <div style="text-align: right; margin-top: 12px;">
-                <button class="btn-text" onclick="hideGuide()">Đã hiểu</button>
+            <div style="text-align: right; margin-top: 16px; position: sticky; bottom: 0; background: var(--md-sys-color-surface); padding-top: 12px;">
+                <button class="btn-text" onclick="hideGuide()" style="font-size: 16px;">Đã hiểu, đóng lại</button>
             </div>
         </div>
     </div>
@@ -388,30 +430,38 @@
             createRipple(event);
             setTimeout(() => {
                 window.open('index.html', '_blank');
-            }, 200);
+            }, 250);
         }
 
         function showGuide() {
-            document.getElementById('guide-modal').style.display = 'flex';
+            const modal = document.getElementById('guide-modal');
+            modal.style.display = 'flex';
+            document.body.style.overflow = 'hidden'; // Khóa cuộn trang chính
         }
 
-        function hideGuide(event) {
-            document.getElementById('guide-modal').style.display = 'none';
+        function hideGuide() {
+            const modal = document.getElementById('guide-modal');
+            modal.style.display = 'none';
+            document.body.style.overflow = 'auto'; // Mở lại cuộn
         }
 
         // Xử lý hiệu ứng FILL cho icons
         document.querySelectorAll('.material-symbols-outlined').forEach(icon => {
-            if (icon.closest('.btn-fab') || icon.closest('.feature-card h3')) return;
+            if (icon.closest('.btn-fab') || icon.closest('.feature-card h3') || icon.classList.contains('header-icon')) return;
             
             icon.addEventListener('mouseenter', () => {
                 icon.style.fontVariationSettings = "'FILL' 1";
             });
             icon.addEventListener('mouseleave', () => {
-                // Giữ nguyên fill cho icon Tabbed để làm điểm nhấn
                 if (!icon.closest('.feature-card:nth-child(2)')) {
                     icon.style.fontVariationSettings = "'FILL' 0";
                 }
             });
+        });
+
+        // Đóng modal khi nhấn phím Esc
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') hideGuide();
         });
     </script>
 </body>
