@@ -8,7 +8,6 @@
     <link rel="icon" type="image/png" href="icon.png">
     <!-- PWA Manifest Link -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#EADDFF">
     
     <!-- Google Sans Flex, Google Sans Code & Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..1000&family=Google+Sans+Code:wght@400;700&display=swap" rel="stylesheet">
@@ -1042,6 +1041,35 @@ function insertCodeBlock() {
     history.push(contentInput.value);
     renderPreview();
 }
+
+
+        function updatePWAThemeColor() {
+    // Tìm thẻ meta theme-color
+    let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+    
+    // Nếu bro đã xóa ở head, đoạn này sẽ tự tạo mới lại
+    if (!metaThemeColor) {
+        metaThemeColor = document.createElement('meta');
+        metaThemeColor.name = "theme-color";
+        document.getElementsByTagName('head')[0].appendChild(metaThemeColor);
+    }
+    
+    // Check môi trường
+    const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                  window.matchMedia('(display-mode: tabbed)').matches ||
+                  window.navigator.standalone === true;
+
+    if (isPWA) {
+        // Màu cho Tabbed PWA (Sáng - Primary Container)
+        metaThemeColor.setAttribute('content', '#EADDFF');
+    } else {
+        // Màu cho Browser (Đậm - Primary)
+        metaThemeColor.setAttribute('content', '#6750A4');
+    }
+}
+
+// Chạy lệnh
+updatePWAThemeColor();
     </script>
     
 </body>
