@@ -6,7 +6,8 @@
   "display": "standalone",
   "display_override": [
     "tabbed",
-    "standalone"
+    "standalone",
+    "browser"
   ],
   "tab_strip": {
     "home_tab": {
@@ -34,29 +35,18 @@
     {
       "action": "./index.html",
       "accept": {
-        "text/plain": [
-          ".txt"
-        ],
-        "text/markdown": [
-          ".md"
-        ],
-        "text/html": [
-          ".html",
-          ".htm"
-        ],
-        "text/javascript": [
-          ".js"
-        ],
-        "application/json": [
-          ".json"
-        ],
-        "text/css": [
-          ".css"
-        ]
+        "text/plain": [".txt", ".bat", ".ps1"],
+        "text/markdown": [".md"],
+        "text/html": [".html", ".htm"],
+        "text/javascript": [".js"],
+        "application/json": [".json"],
+        "text/css": [".css"],
+        "text/x-python": [".py"]
       }
     }
   ],
   "launch_handler": {
     "client_mode": "navigate-new"
-  }
+  },
+  "scope": "/"
 }
