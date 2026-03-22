@@ -10,13 +10,6 @@
     "browser"
   ],
   "tab_strip": {
-    "home_tab": {
-      "scope_patterns": [
-        {
-          "pathname": "/about.html"
-        }
-      ]
-    },
     "new_tab_button": {
       "url": "./index.html"
     }
