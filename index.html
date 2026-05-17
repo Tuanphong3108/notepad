@@ -424,7 +424,7 @@
     ".txt", ".md", ".json",
     ".html", ".htm",
     ".css", ".js",
-    ".bat", ".py", ".ps1"
+    ".bat", ".py", ".ps1", ".vbs", ".reg"
 ];
         const md = window.markdownit({
     html: false,        // không cho raw HTML
@@ -872,6 +872,8 @@ function insertMD(prefix, suffix) {
                         "application/x-bat": [".bat"],
                         "text/x-python": [".py"],
                         "text/x-powershell": [".ps1"]
+                        "text/x-vbscript": [".vbs"]
+                        "text/x-registry": [".reg"]
                     }
                 }
             ],
