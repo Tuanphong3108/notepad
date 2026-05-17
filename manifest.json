@@ -28,7 +28,7 @@
     {
       "action": "/notepad/index.html",
       "accept": {
-        "text/plain": [".txt", ".bat", ".ps1"],
+        "text/plain": [".txt", ".bat", ".ps1", ".vbs", ".reg"],
         "text/markdown": [".md"],
         "text/html": [".html", ".htm"],
         "text/javascript": [".js"],
