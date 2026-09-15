@@ -1,0 +1,45 @@
+{
+  "name": "Notepad MD3 Expressive",
+  "short_name": "Notepad",
+  "description": "Ứng dụng ghi chú phong cách Material Design 3 với chế độ Tabbed PWA",
+  "start_url": "/notepad/index.html",
+  "display": "standalone",
+  "display_override": [
+    "tabbed",
+    "standalone",
+    "browser"
+  ],
+  "tab_strip": {
+    "new_tab_button": {
+      "url": "/notepad/index.html"
+    }
+  },
+  "background_color": "#FEF7FF",
+  "theme_color": "#6750A4",
+  "icons": [
+    {
+      "src": "icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/notepad/index.html",
+      "accept": {
+        "text/plain": [".txt", ".bat", ".ps1", ".vbs", ".reg"],
+        "text/markdown": [".md"],
+        "text/html": [".html", ".htm"],
+        "text/javascript": [".js"],
+        "application/json": [".json"],
+        "text/css": [".css"],
+        "text/x-python": [".py"]
+      }
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "navigate-new"
+  },
+  "scope": "/notepad/"
+}
