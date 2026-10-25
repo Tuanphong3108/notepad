@@ -1,4 +1,4 @@
-const CACHE_NAME = 'notepad-v12-multitab';
+const CACHE_NAME = 'notepad-v13-multitab';
 
 // Relative URLs resolve against this file, so the cache works under any
 // base path (the app is served from /notepad/, not from the site root).
@@ -57,7 +57,9 @@ self.addEventListener('fetch', (event) => {
   // Our own pages and scripts: network first (always fresh), cache when offline.
   if (sameOrigin || req.mode === 'navigate') {
     event.respondWith(
-      fetch(req)
+      // 'no-cache' = always revalidate with the server, so GitHub Pages' 10-minute HTTP cache can't
+      // serve a stale app.js next to a fresh index.html
+      fetch(req, { cache: 'no-cache' })
         .then((res) => {
           if (res.ok) {
             const copy = res.clone();
