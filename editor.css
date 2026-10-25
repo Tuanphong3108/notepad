@@ -1,0 +1,252 @@
+/*
+ * editor.css - shared by index.html (MD3) and index_md1.html (MD1)
+ *
+ * 1. Editor layers: syntax highlighting + spell-check underlines are drawn on
+ *    transparent <div>s placed exactly under the (transparent-text) <textarea>.
+ * 2. highlight.js token colours (light / dark).
+ * 3. Spell-check language dialog.
+ *
+ * The pages provide the --ed-* variables (see the :root block of each page).
+ */
+
+/* ---------- Token colours (GitHub-like palette) ---------- */
+:root {
+    --syn-keyword: #CF222E;
+    --syn-string: #0A3069;
+    --syn-comment: #6E7781;
+    --syn-number: #0550AE;
+    --syn-title: #8250DF;
+    --syn-builtin: #953800;
+    --syn-tag: #116329;
+    --syn-variable: #BC4C00;
+    --syn-add: #116329;
+    --syn-del: #CF222E;
+    --spell-color: #D93025;
+}
+
+html[data-theme="dark"] {
+    --syn-keyword: #FF7B72;
+    --syn-string: #A5D6FF;
+    --syn-comment: #8B949E;
+    --syn-number: #79C0FF;
+    --syn-title: #D2A8FF;
+    --syn-builtin: #FFA657;
+    --syn-tag: #7EE787;
+    --syn-variable: #FFA657;
+    --syn-add: #7EE787;
+    --syn-del: #FF7B72;
+    --spell-color: #F28B82;
+}
+
+/* ---------- Layers ---------- */
+.editor-wrapper {
+    --ed-font: 'Google Sans Code', 'Consolas', monospace;
+    --ed-size: 1rem;
+    --ed-lh: 1.8;
+    --ed-pad: 40px;
+}
+
+/* The textarea and every layer MUST lay text out identically. */
+#noteContent,
+.editor-layer {
+    box-sizing: border-box;
+    font-family: var(--ed-font);
+    font-size: var(--ed-size);
+    line-height: var(--ed-lh);
+    padding: var(--ed-pad);
+    tab-size: 4;
+    -moz-tab-size: 4;
+    letter-spacing: normal;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: normal;
+}
+
+.editor-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    border: 0;
+    background: none;
+    pointer-events: none;
+    overflow: hidden;
+    color: transparent;
+    /* --ed-sb = width of the textarea's scrollbar (+ border), set from JS */
+    padding-right: calc(var(--ed-pad) + var(--ed-sb, 0px));
+}
+
+#syntaxLayer { z-index: 0; color: var(--ed-editor-text); }
+#spellLayer { z-index: 0; }
+#searchHighlights { z-index: 1; }
+
+.editor-wrapper:not(.syntax-on) #syntaxLayer { display: none; }
+
+/* When the syntax layer is visible the textarea only provides caret + selection. */
+.editor-wrapper.syntax-on #noteContent {
+    color: transparent;
+    caret-color: var(--ed-editor-text);
+}
+.editor-wrapper.syntax-on #noteContent::selection {
+    background: var(--ed-selection);
+    color: transparent;
+}
+
+/* ---------- Spell-check underline ---------- */
+.spell-err {
+    text-decoration-line: underline;
+    text-decoration-style: wavy;
+    text-decoration-color: var(--spell-color);
+    text-decoration-thickness: 1.2px;
+    text-underline-offset: 3px;
+}
+
+/* ---------- highlight.js tokens (colour only: never change glyph widths) ---------- */
+#syntaxLayer .hljs-keyword,
+#syntaxLayer .hljs-selector-tag,
+#syntaxLayer .hljs-doctag,
+#syntaxLayer .hljs-template-tag,
+#syntaxLayer .hljs-template-variable.hljs-type,
+#syntaxLayer .hljs-meta .hljs-keyword { color: var(--syn-keyword); }
+
+#syntaxLayer .hljs-string,
+#syntaxLayer .hljs-regexp,
+#syntaxLayer .hljs-meta .hljs-string,
+#syntaxLayer .hljs-code { color: var(--syn-string); }
+
+#syntaxLayer .hljs-comment,
+#syntaxLayer .hljs-quote { color: var(--syn-comment); }
+
+#syntaxLayer .hljs-number,
+#syntaxLayer .hljs-literal,
+#syntaxLayer .hljs-attr,
+#syntaxLayer .hljs-attribute,
+#syntaxLayer .hljs-property,
+#syntaxLayer .hljs-selector-attr,
+#syntaxLayer .hljs-selector-class,
+#syntaxLayer .hljs-selector-id,
+#syntaxLayer .hljs-link,
+#syntaxLayer .hljs-meta { color: var(--syn-number); }
+
+#syntaxLayer .hljs-title,
+#syntaxLayer .hljs-title.class_,
+#syntaxLayer .hljs-title.function_,
+#syntaxLayer .hljs-section,
+#syntaxLayer .hljs-selector-pseudo { color: var(--syn-title); }
+
+#syntaxLayer .hljs-built_in,
+#syntaxLayer .hljs-type,
+#syntaxLayer .hljs-symbol,
+#syntaxLayer .hljs-bullet,
+#syntaxLayer .hljs-params { color: var(--syn-builtin); }
+
+#syntaxLayer .hljs-tag,
+#syntaxLayer .hljs-name { color: var(--syn-tag); }
+
+#syntaxLayer .hljs-variable,
+#syntaxLayer .hljs-template-variable,
+#syntaxLayer .hljs-subst { color: var(--syn-variable); }
+
+#syntaxLayer .hljs-addition { color: var(--syn-add); }
+#syntaxLayer .hljs-deletion { color: var(--syn-del); }
+#syntaxLayer .hljs-strong { color: var(--syn-builtin); }
+#syntaxLayer .hljs-emphasis { color: var(--syn-title); }
+/* keep the text of a tag readable inside <tag>...</tag> */
+#syntaxLayer .hljs-tag .hljs-attr { color: var(--syn-number); }
+#syntaxLayer .hljs-tag .hljs-string { color: var(--syn-string); }
+
+/* ---------- Menu extras ---------- */
+.menu-item .menu-text { display: flex; flex-direction: column; line-height: 1.25; }
+.menu-item .menu-subtext { font-size: 11px; font-weight: 400; opacity: 0.65; }
+#moreOptionsMenu { max-height: calc(100vh - 80px); overflow-y: auto; }
+
+/* ---------- Spell-check language dialog ---------- */
+.dlg-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    background: rgba(0, 0, 0, 0.4);
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.dlg-overlay.open { display: flex; }
+
+.dlg-card {
+    background: var(--ed-surface);
+    color: var(--ed-text);
+    border-radius: var(--ed-radius);
+    width: 100%;
+    max-width: 440px;
+    max-height: min(660px, 92vh);
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+    box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+}
+.dlg-title { font-size: 20px; font-weight: 700; margin: 0 0 6px; }
+.dlg-sub { font-size: 13px; line-height: 1.45; color: var(--ed-text-2); margin: 0 0 14px; }
+
+.dlg-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--ed-text);
+    background: transparent;
+    border: 1px solid var(--ed-text-2);
+    border-radius: var(--ed-btn-radius);
+    outline: none;
+}
+.dlg-search:focus { border-color: var(--ed-primary); }
+
+.dlg-list { flex: 1; min-height: 140px; overflow-y: auto; margin: 0 -8px; padding: 0 8px; }
+.dlg-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 8px;
+    border-radius: var(--ed-btn-radius);
+    cursor: pointer;
+    user-select: none;
+}
+.dlg-row:hover { background: var(--ed-hover); }
+.dlg-row input { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--ed-primary); cursor: pointer; }
+.dlg-name { flex: 1; font-size: 14px; }
+.dlg-meta { font-size: 11px; color: var(--ed-text-2); white-space: nowrap; }
+.dlg-meta.ok { color: var(--ed-primary); }
+.dlg-meta.err { color: var(--ed-error); }
+.dlg-empty { padding: 16px 8px; font-size: 13px; color: var(--ed-text-2); }
+
+.dlg-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.dlg-btn {
+    padding: 9px 18px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--ed-text-2);
+    border-radius: var(--ed-btn-radius);
+    text-transform: var(--ed-btn-case, none);
+}
+.dlg-btn:hover { background: var(--ed-hover); }
+.dlg-btn.primary { background: var(--ed-primary); color: var(--ed-on-primary); }
+.dlg-btn.primary:hover { filter: brightness(1.08); }
+
+.dlg-info {
+    font-size: 12px;
+    line-height: 1.45;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    border-radius: var(--ed-btn-radius);
+    background: var(--ed-hover);
+    color: var(--ed-text);
+}
+.dlg-inline { align-self: flex-start; margin: -2px 0 10px; padding: 7px 14px; color: var(--ed-primary); border: 1px solid var(--ed-primary); }
+#spellSubmenu { max-height: 70vh; overflow-y: auto; }
+#spellCtxItem { cursor: default; }
