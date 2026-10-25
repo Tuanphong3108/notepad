@@ -65,8 +65,8 @@ html[data-theme="dark"] {
 .editor-layer {
     position: absolute;
     top: 0;
-    left: 0;
-    width: 100%;
+    left: var(--ed-gutter, 0px);
+    width: calc(100% - var(--ed-gutter, 0px));
     height: 100%;
     margin: 0;
     border: 0;
@@ -250,3 +250,183 @@ html[data-theme="dark"] {
 .dlg-inline { align-self: flex-start; margin: -2px 0 10px; padding: 7px 14px; color: var(--ed-primary); border: 1px solid var(--ed-primary); }
 #spellSubmenu { max-height: 70vh; overflow-y: auto; }
 #spellCtxItem { cursor: default; }
+
+/* ---------- Status bar ---------- */
+#statusBar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: 28px;
+    padding: 4px 16px;
+    font-size: 12px;
+    color: var(--ed-text-2);
+    background: var(--ed-surface);
+    border-top: 1px solid var(--ed-hover);
+    user-select: none;
+    overflow: hidden;
+}
+#statusBar .sb-group { display: flex; align-items: center; gap: 16px; min-width: 0; }
+#statusBar .sb-item { white-space: nowrap; }
+@media (max-width: 560px) { #cursorPos { display: none; } #statusBar { padding: 4px 10px; gap: 8px; } #statusBar .sb-group { gap: 10px; } }
+
+/* ---------- Theme dropdown in the menu ---------- */
+.theme-select {
+    margin-left: auto;
+    font: inherit;
+    font-size: 13px;
+    color: var(--ed-text);
+    background: var(--ed-hover);
+    border: 1px solid var(--ed-text-2);
+    border-radius: var(--ed-btn-radius);
+    padding: 4px 8px;
+    cursor: pointer;
+    outline: none;
+}
+.theme-select:focus { border-color: var(--ed-primary); }
+.theme-select option { background: var(--ed-surface); color: var(--ed-text); }
+
+/* ---------- Auto Save bubble ---------- */
+#autoSavePrompt {
+    display: none;
+    position: fixed;
+    z-index: 200;
+    width: 280px;
+    max-width: calc(100vw - 24px);
+    box-sizing: border-box;
+    padding: 14px 16px 10px;
+    color: var(--ed-text);
+    background: var(--ed-surface);
+    border: 1px solid var(--ed-hover);
+    border-radius: min(var(--ed-radius), 18px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    transform-origin: var(--tail-x, 80%) -8px;
+}
+#autoSavePrompt.open { display: block; animation: bubbleIn 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+#autoSavePrompt.closing { display: block; animation: bubbleOut 0.16s ease forwards; }
+#autoSavePrompt::before {          /* the chat-bubble tail pointing at the switch */
+    content: '';
+    position: absolute;
+    top: -7px;
+    left: var(--tail-x, 80%);
+    width: 12px;
+    height: 12px;
+    background: var(--ed-surface);
+    border-left: 1px solid var(--ed-hover);
+    border-top: 1px solid var(--ed-hover);
+    transform: translateX(-50%) rotate(45deg);
+}
+@keyframes bubbleIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes bubbleOut { to { opacity: 0; transform: scale(0.6); } }
+.bubble-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.bubble-text { font-size: 13px; line-height: 1.45; color: var(--ed-text-2); margin: 0; }
+.bubble-actions { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+.bubble-actions .dlg-btn { padding: 6px 14px; }
+
+/* ---------- Edit suggestions ("Gợi ý sửa") ---------- */
+:root { --sg-del: #D93025; --sg-ins: #1E8E3E; }
+html[data-theme="dark"] { --sg-del: #F28B82; --sg-ins: #81C995; }
+
+#suggestLayer { z-index: 1; color: var(--ed-editor-text); visibility: hidden; }
+.editor-wrapper.suggesting #suggestLayer { visibility: visible; }
+.editor-wrapper.suggesting #syntaxLayer,
+.editor-wrapper.suggesting #spellLayer,
+.editor-wrapper.suggesting #searchHighlights { visibility: hidden; }
+.editor-wrapper.suggesting #noteContent { color: transparent !important; caret-color: transparent; }
+
+#suggestLayer del.sg-del {
+    text-decoration: line-through;
+    text-decoration-color: var(--sg-del);
+    background: color-mix(in srgb, var(--sg-del) 22%, transparent);
+    border-radius: 3px;
+}
+#suggestLayer ins.sg-ins {
+    text-decoration: none;
+    opacity: 0.6;
+    background: color-mix(in srgb, var(--sg-ins) 20%, transparent);
+    border-radius: 3px;
+}
+
+#suggestBar {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    z-index: 6;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    background: var(--ed-surface);
+    border: 1px solid var(--ed-hover);
+    border-radius: min(var(--ed-radius), 24px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -8px) scale(0.96);
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0s linear 0.18s;
+}
+#suggestBar.open { opacity: 1; visibility: visible; transform: translate(-50%, 0) scale(1); transition-delay: 0s; }
+#suggestBar button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 14px 6px 10px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ed-text);
+    background: transparent;
+    border: 0;
+    border-radius: min(var(--ed-btn-radius), 20px);
+    cursor: pointer;
+    white-space: nowrap;
+}
+#suggestBar button:hover { background: var(--ed-hover); }
+#suggestBar .material-symbols-outlined { font-size: 18px; }
+#suggestBar .sg-accept { background: var(--ed-primary); color: var(--ed-on-primary); }
+#suggestBar .sg-accept:hover { background: var(--ed-primary); filter: brightness(1.1); }
+
+/* ---------- Suggestion dialog fields ---------- */
+.dlg-label { display: block; font-size: 12px; font-weight: 700; color: var(--ed-text-2); margin: 12px 0 4px; }
+.dlg-line { display: flex; gap: 8px; align-items: center; }
+.dlg-line .dlg-search { margin: 0; flex: 1; min-width: 0; }
+.dlg-select {
+    width: 100%; box-sizing: border-box; padding: 10px 12px; font: inherit; font-size: 14px;
+    color: var(--ed-text); background: var(--ed-surface); border: 1px solid var(--ed-text-2);
+    border-radius: var(--ed-btn-radius); outline: none;
+}
+.dlg-select:disabled, .dlg-search:disabled { opacity: 0.5; }
+.dlg-toggle { display: flex; align-items: center; justify-content: space-between; padding: 12px 0 0; }
+#suggestDialog .dlg-card { overflow-y: auto; }
+#suggestDialog .dlg-meta { white-space: normal; margin-top: 4px; min-height: 14px; }
+#suggestDialog .dlg-info { margin-top: 12px; }
+
+/* ---------- Spell submenu: "Thêm vào từ điển" row ---------- */
+#spellSubmenu .spell-sep { height: 1px; margin: 4px 0; background: var(--ed-hover); }
+#spellSubmenu .spell-add { white-space: nowrap; }
+
+/* ---------- Line numbers ---------- */
+.editor-wrapper #noteContent { margin-left: var(--ed-gutter, 0px); }
+.editor-gutter {
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: var(--ed-gutter, 0px);
+    box-sizing: border-box;
+    overflow: hidden;
+    padding: var(--ed-pad) 12px var(--ed-pad) 12px;
+    font-family: var(--ed-font);
+    font-size: var(--ed-size);
+    line-height: var(--ed-lh);
+    text-align: right;
+    color: var(--ed-text-2);
+    opacity: 0.8;
+    border-right: 1px solid var(--ed-hover);
+    pointer-events: none;
+    user-select: none;
+    z-index: 1;
+}
+.editor-gutter div > div { overflow: hidden; }
+.editor-mirror { visibility: hidden; z-index: -1; }
+.editor-mirror > div { min-height: 1px; }

@@ -62,7 +62,10 @@
     const mainSaveBtn = $('mainSaveBtn');
     const autoSaveToggle = $('autoSaveToggle');
     const autoSaveContainer = $('autoSaveContainer');
-    const darkModeToggle = $('darkModeToggle');
+    const themeSelect = $('themeSelect');
+    const lineCount = $('lineCount');
+    const cursorPos = $('cursorPos');
+    const fileTypeLabel = $('fileTypeLabel');
     const wordCount = $('wordCount');
     const toast = $('toast');
     const mdToolbar = $('mdToolbar');
@@ -74,6 +77,10 @@
     const findCountDisplay = $('findCount');
     const autoSavePrompt = $('autoSavePrompt');
     const syntaxLayer = $('syntaxLayer');
+    const suggestLayer = $('suggestLayer');
+    const lineGutter = $('lineGutter');
+    const lineGutterInner = $('lineGutterInner');
+    const lineMirror = $('lineMirror');
     const spellLayer = $('spellLayer');
     const editorWrapper = contentInput.parentElement;
     const spellToggle = $('spellCheckToggle');
@@ -175,8 +182,28 @@
         toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
     }
 
-    function showAutoSavePrompt() { autoSavePrompt.classList.remove('hidden'); }
-    function closeAutoSavePrompt() { autoSavePrompt.classList.add('hidden'); }
+    // The prompt is a chat bubble anchored under the Auto Save switch.
+    function showAutoSavePrompt() {
+        updateSaveUI();
+        let r = autoSaveContainer.getBoundingClientRect();
+        if (!r.width) r = moreOptionsBtn.getBoundingClientRect();
+        const W = Math.min(280, window.innerWidth - 24);
+        const cx = r.left + r.width / 2;
+        const left = Math.max(12, Math.min(window.innerWidth - 12 - W, cx - W / 2));
+        autoSavePrompt.style.width = W + 'px';
+        autoSavePrompt.style.left = left + 'px';
+        autoSavePrompt.style.top = (r.bottom + 12) + 'px';
+        autoSavePrompt.style.setProperty('--tail-x', Math.max(18, Math.min(W - 18, cx - left)) + 'px');
+        autoSavePrompt.classList.remove('closing');
+        autoSavePrompt.classList.add('open');
+    }
+    function autoSavePromptOpen() { return autoSavePrompt.classList.contains('open'); }
+    function closeAutoSavePrompt() {
+        if (!autoSavePromptOpen()) return;
+        autoSavePrompt.classList.remove('open');
+        autoSavePrompt.classList.add('closing');
+        setTimeout(() => autoSavePrompt.classList.remove('closing'), 160);
+    }
     function enableAutoSave() {
         autoSaveToggle.checked = true;
         closeAutoSavePrompt();
@@ -201,11 +228,35 @@
         const text = contentInput.value;
         const trimmed = text.trim();
         const words = trimmed === '' ? 0 : trimmed.split(/\s+/).length;
-        wordCount.textContent = `${text.length} ký tự • ${words} từ`;
+        wordCount.textContent = `${text.length.toLocaleString('vi-VN')} ký tự • ${words.toLocaleString('vi-VN')} từ`;
+        let lines = 1;
+        for (let i = text.indexOf('\n'); i !== -1; i = text.indexOf('\n', i + 1)) lines++;
+        lineCount.textContent = `${lines.toLocaleString('vi-VN')} dòng`;
+        updateCursorPos();
     }
+
+    function updateCursorPos() {
+        const pos = contentInput.selectionStart || 0;
+        const before = contentInput.value.slice(0, pos);
+        const ln = before.split('\n').length;
+        const col = pos - (before.lastIndexOf('\n') + 1) + 1;
+        cursorPos.textContent = `Dòng ${ln}, Cột ${col}`;
+    }
+
+    const FILE_TYPE_NAMES = {
+        txt: 'Văn bản thuần', md: 'Markdown', js: 'JavaScript', json: 'JSON', html: 'HTML', htm: 'HTML',
+        css: 'CSS', py: 'Python', bat: 'Batch', ps1: 'PowerShell', vbs: 'VBScript', reg: 'Registry',
+        lang: 'Language (.lang)'
+    };
+    function updateFileTypeLabel() {
+        fileTypeLabel.textContent = FILE_TYPE_NAMES[currentExt] || (currentExt ? currentExt.toUpperCase() : 'Văn bản thuần');
+    }
+    ['keyup', 'click', 'select', 'focus'].forEach((ev) => contentInput.addEventListener(ev, updateCursorPos));
+    document.addEventListener('selectionchange', () => { if (document.activeElement === contentInput) updateCursorPos(); });
 
     function checkFileType(fileName) {
         currentExt = fileName.includes('.') ? fileName.toLowerCase().split('.').pop() : '';
+        updateFileTypeLabel();
         isMarkdown = fileName.toLowerCase().endsWith('.md');
         if (isMarkdown) {
             mdToolbar.classList.replace('opacity-0', 'opacity-100');
@@ -255,14 +306,16 @@
     function applyTheme() {
         const theme = currentTheme();
         document.documentElement.setAttribute('data-theme', theme);
-        if (darkModeToggle) darkModeToggle.checked = theme === 'dark';
+        if (themeSelect) themeSelect.value = getStoredTheme() || 'system';
         updateThemeColor();
     }
 
-    function toggleDarkMode(e) {
-        if (e) e.stopPropagation(); // keep the menu open so the switch animation is visible
-        const next = currentTheme() === 'dark' ? 'light' : 'dark';
-        try { localStorage.setItem(THEME_KEY, next); } catch (err) { /* storage blocked */ }
+    // mode: 'dark' (Bật) | 'light' (Tắt) | 'system' (Hệ thống)
+    function setThemeMode(mode) {
+        try {
+            if (mode === 'dark' || mode === 'light') localStorage.setItem(THEME_KEY, mode);
+            else localStorage.removeItem(THEME_KEY);
+        } catch (err) { /* storage blocked */ }
         applyTheme();
     }
 
@@ -452,10 +505,21 @@
         if (currentSearchIndex === -1 || searchResults.length === 0) return;
         const result = searchResults[currentSearchIndex];
         contentInput.setSelectionRange(result.start, result.end);
-        const lineHeight = parseInt(window.getComputedStyle(contentInput).lineHeight, 10) || 28;
-        const linesBefore = contentInput.value.substring(0, result.start).split('\n').length;
-        const scrollTarget = (linesBefore * lineHeight) - (contentInput.clientHeight / 2);
-        contentInput.scrollTo({ top: scrollTarget, behavior: 'smooth' });
+        // The highlight layer wraps exactly like the textarea, so the current <mark> tells the real y position.
+        const mark = searchHighlights.querySelector('mark.current');
+        let y;
+        if (mark) {
+            const lh = parseFloat(getComputedStyle(contentInput).lineHeight) || 28;
+            y = mark.offsetTop + lh / 2;
+        } else {
+            const lh = parseFloat(getComputedStyle(contentInput).lineHeight) || 28;
+            y = contentInput.value.substring(0, result.start).split('\n').length * lh;
+        }
+        const view = contentInput.clientHeight;
+        const top = contentInput.scrollTop;
+        if (y < top + 40 || y > top + view - 60) {          // only scroll when the match is not comfortably visible
+            contentInput.scrollTo({ top: Math.max(0, y - view / 2), behavior: 'smooth' });
+        }
     }
 
     // jump = move the editor selection to the current match (only when the
@@ -550,7 +614,8 @@
         moreOptionsMenu.style.top = (rect.bottom + 8) + 'px';
     });
 
-    window.addEventListener('click', () => {
+    window.addEventListener('click', (e) => {
+        if (autoSavePromptOpen() && !autoSavePrompt.contains(e.target)) closeAutoSavePrompt();
         contextMenu.style.display = 'none';
         moreOptionsMenu.style.display = 'none';
         hideSpellSubmenu();
@@ -741,6 +806,9 @@
 
         if (e.key === 'Escape') {
             if (spellDialogOpen()) { closeSpellDialog(); return; }
+            if (suggestDialogOpen()) { closeSuggestDialog(); return; }
+            if (sug.active) { rejectSuggestion(); return; }
+            if (autoSavePromptOpen()) { closeAutoSavePrompt(); return; }
             if (contextMenu.style.display === 'block') {
                 contextMenu.style.display = 'none';
                 hideSpellSubmenu();
@@ -804,13 +872,58 @@
     let spellTimer = null;
     let lastScrollbar = -1;
 
-    const layers = [syntaxLayer, spellLayer, searchHighlights];
+    const layers = [syntaxLayer, spellLayer, searchHighlights, suggestLayer];
 
     function syncLayerScroll() {
         for (const layer of layers) {
             layer.scrollTop = contentInput.scrollTop;
             layer.scrollLeft = contentInput.scrollLeft;
         }
+        lineGutter.scrollTop = contentInput.scrollTop;
+    }
+
+    // ---- line numbers (a number per logical line, as tall as the wrapped line) ----
+    const GUTTER_WRAP_MAX = 20000;   // above this many lines wrapped lines are not measured
+    let gutterTimer = 0, gutterKey = '';
+
+    function updateGutter() {
+        const text = contentInput.value;
+        const lines = text.split('\n');
+        const n = lines.length;
+        const digits = Math.max(2, String(n).length);
+
+        // width of one character in the editor font
+        lineMirror.innerHTML = '<span>0000000000</span>';
+        const charW = lineMirror.firstChild.getBoundingClientRect().width / 10 || 9;
+        const width = Math.ceil(digits * charW) + 24;
+        const wrapper = editorWrapper;
+        if (wrapper.style.getPropertyValue('--ed-gutter') !== width + 'px') {
+            wrapper.style.setProperty('--ed-gutter', width + 'px');
+        }
+
+        let html = '';
+        if (n <= GUTTER_WRAP_MAX) {
+            lineMirror.innerHTML = lines.map((l) => '<div>' + (escapeHtml(l) || '\u200b') + '</div>').join('');
+            const kids = lineMirror.children;
+            for (let i = 0; i < n; i++) {
+                html += '<div style="height:' + kids[i].getBoundingClientRect().height.toFixed(2) + 'px">' + (i + 1) + '</div>';
+            }
+            lineMirror.textContent = '';
+        } else {
+            for (let i = 1; i <= n; i++) html += '<div>' + i + '</div>';
+        }
+        const key = width + '|' + html.length + '|' + n;
+        if (key !== gutterKey || lineGutterInner.innerHTML !== html) {
+            gutterKey = key;
+            lineGutterInner.innerHTML = html;
+        }
+        lineGutter.scrollTop = contentInput.scrollTop;
+    }
+
+    function scheduleGutter() {
+        clearTimeout(gutterTimer);
+        if (contentInput.value.length < 60000) updateGutter();
+        else gutterTimer = setTimeout(updateGutter, 120);
     }
 
     // The textarea loses width when its scrollbar appears; the layers must wrap identically.
@@ -822,7 +935,14 @@
         }
     }
 
-    if (window.ResizeObserver) new ResizeObserver(syncScrollbarWidth).observe(contentInput);
+    if (window.ResizeObserver) {
+        let lastW = 0;
+        new ResizeObserver(() => {
+            syncScrollbarWidth();
+            const w = contentInput.clientWidth;
+            if (w !== lastW) { lastW = w; scheduleGutter(); }   // wrapping changed -> line heights changed
+        }).observe(contentInput);
+    }
 
     // ---- syntax highlighting ----
     function syntaxLang() {
@@ -1366,8 +1486,27 @@
         return ok;
     }
 
+    // Words the user added with "Thêm vào từ điển" (stored lower-case, matched case-insensitively)
+    const USER_DICT_KEY = 'notepad-user-dict';
+    const userDict = new Set();
+    try {
+        const saved = JSON.parse(lsGet(USER_DICT_KEY));
+        if (Array.isArray(saved)) saved.forEach((w) => typeof w === 'string' && userDict.add(w));
+    } catch (err) { /* empty dictionary */ }
+    const dictKey = (w) => w.normalize('NFC').replace(/’/g, "'").toLowerCase();
+
+    function addToUserDict(word) {
+        userDict.add(dictKey(word));
+        lsSet(USER_DICT_KEY, JSON.stringify(Array.from(userDict)));
+        hideSpellSubmenu();
+        contextMenu.style.display = 'none';
+        renderSpell(false);
+        showToast(`Đã thêm "${word}" vào từ điển`);
+    }
+
     // true = fine, false = misspelled, null = not checked yet (Gemini only)
     function verdictOf(word) {
+        if (userDict.size && userDict.has(dictKey(word))) return true;
         if (spell.engine === 'gemini') {
             const v = gem.verdicts.get(word);
             return v ? v.ok : null;
@@ -1447,6 +1586,7 @@
             setSyntaxActive(false);
         }
         syncScrollbarWidth();
+        scheduleGutter();
         syncLayerScroll();
         scheduleSpell();
     }
@@ -1525,6 +1665,15 @@
             item.addEventListener('click', () => applySuggestion(entry, s));
             spellSubmenu.append(item);
         }
+        // last row: remember the word so it is never underlined again
+        const sep = document.createElement('div');
+        sep.className = 'spell-sep';
+        spellSubmenu.append(sep);
+        const add = document.createElement('div');
+        add.className = 'menu-item spell-add';
+        add.innerHTML = '<span class="material-symbols-outlined">library_add</span>Thêm vào từ điển';
+        add.addEventListener('click', () => addToUserDict(entry.word));
+        spellSubmenu.append(add);
 
         spellSubmenu.style.display = 'block';
         const r = spellCtxItem.getBoundingClientRect();
@@ -1679,6 +1828,507 @@
     contentInput.addEventListener('blur', () => { if (spell.enabled) renderSpell(false); });
 
     // ------------------------------------------------------------------
+    // "Gợi ý sửa": VS Code-style edit suggestions powered by the Gemini API
+    // ------------------------------------------------------------------
+    const SUG_LS = {
+        key: 'notepad-suggest-key',
+        enabled: 'notepad-suggest',
+        model: 'notepad-suggest-model',
+        models: 'notepad-suggest-models',
+        rpd: 'notepad-suggest-rpd',
+        usage: 'notepad-suggest-usage'
+    };
+    const GEMINI_API = 'https://generativelanguage.googleapis.com/v1beta';
+    const SUG_QUOTA_USE = 0.99;      // use 99% of the daily request quota
+    const SUG_MIN_INTERVAL = 6;      // seconds, never faster than ~10 requests / minute
+    const SUG_MAX_INTERVAL = 300;    // seconds: never wait longer than 5 minutes between checks
+    const SUG_IDLE_MS = 1500;        // wait until the user stops typing
+    const SUG_WINDOW = 8000;         // characters of context sent per request
+    const SUG_MAX_EDITS = 6;
+    const SUG_SCHEMA = {
+        type: 'OBJECT',
+        properties: {
+            edits: {
+                type: 'ARRAY',
+                items: {
+                    type: 'OBJECT',
+                    properties: { original: { type: 'STRING' }, replacement: { type: 'STRING' } },
+                    required: ['original', 'replacement']
+                }
+            }
+        },
+        required: ['edits']
+    };
+    const SUG_SYSTEM = [
+        'You are the "next edit suggestion" engine of a text/code editor, like the one in VS Code.',
+        'You receive FILE NAME and FILE TYPE (use them as context: what kind of document this is and which language/syntax it should follow) and the TEXT of the file.',
+        'Look for clear, objective mistakes only: typos, misspellings, grammar errors, wrong punctuation, broken syntax, or an obviously unfinished sentence/statement right at CURSOR that can be completed. Report at most ' + SUG_MAX_EDITS + '.',
+        'MOST OF THE TIME THE TEXT IS ALREADY FINE. In that case return {"edits":[]}. An empty list is the normal, expected, correct answer.',
+        'Never invent a change just to return something. Never improve style, tone, wording or formatting, never translate, never rename identifiers, never "polish". If you are not sure something is wrong, leave it alone.',
+        'Keep the language of the document. Do not touch anything that is correct, and never remove or rewrite content that is intentional (names, code, jargon, slang, abbreviations).',
+        'Each edit has "original": an EXACT, verbatim substring of TEXT that is unique in TEXT (include a few neighbouring words if needed), and "replacement": that same substring after the fix.',
+        'To add text, return the nearby words as "original" and the same words plus the new text as "replacement".'
+    ].join('\n');
+
+    const suggestBar = $('suggestBar');
+    const sugDialog = $('suggestDialog');
+    const sugKeyInput = $('sugKey');
+    const sugKeyStatus = $('sugKeyStatus');
+    const sugToggle = $('sugToggle');
+    const sugModelSel = $('sugModel');
+    const sugRpdInput = $('sugRpd');
+    const sugInfo = $('sugInfo');
+    const sugSummary = $('sugSummary');
+    const sugSaveBtn = $('sugSave');
+
+    const sug = {
+        enabled: lsGet(SUG_LS.enabled) === 'on',
+        active: null,          // { base, edits:[{s,e,ins}] }
+        pending: false,
+        lastChecked: null,     // text that was last sent
+        lastRequestAt: 0,
+        lastInputAt: 0,
+        pausedUntil: 0,
+        timer: 0,
+        padBackup: ''
+    };
+
+    const sugKey = () => lsGet(SUG_LS.key) || '';
+    const sugModel = () => lsGet(SUG_LS.model) || '';
+    const sugReady = () => !!(sugKey() && sugModel());
+
+    function sugModelList() {
+        try { const l = JSON.parse(lsGet(SUG_LS.models)); return Array.isArray(l) ? l : []; } catch (err) { return []; }
+    }
+
+    // Daily request quota differs per model/account and Google gives no API for it, so these are
+    // starting values that the user can correct (see AI Studio > Rate limits).
+    function defaultRpd(model) {
+        const m = model.toLowerCase();
+        if (m.includes('lite')) return 1000;
+        if (m.includes('flash')) return 250;
+        if (m.includes('pro')) return 50;
+        return 100;
+    }
+    function sugRpd(model) {
+        try {
+            const saved = JSON.parse(lsGet(SUG_LS.rpd) || '{}')[model];
+            if (saved > 0) return saved;
+        } catch (err) { /* ignore */ }
+        return defaultRpd(model);
+    }
+    const sugBudget = (model) => Math.max(1, Math.floor(sugRpd(model) * SUG_QUOTA_USE));
+    // spread the budget evenly over 24 hours
+    // (but never longer than 5 minutes; the daily counter still stops requests at 99% of the quota)
+    const sugInterval = (model) => Math.min(SUG_MAX_INTERVAL, Math.max(SUG_MIN_INTERVAL, Math.ceil(86400 / sugBudget(model))));
+
+    function fmtDuration(sec) {
+        if (sec < 90) return sec + ' giây';
+        const m = Math.floor(sec / 60), s = sec % 60;
+        if (m < 60) return m + ' phút' + (s ? ' ' + s + ' giây' : '');
+        const h = Math.floor(m / 60);
+        return h + ' giờ' + (m % 60 ? ' ' + (m % 60) + ' phút' : '');
+    }
+
+    // Gemini quotas reset at midnight Pacific time
+    function quotaDay() {
+        try {
+            return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
+        } catch (err) { return new Date().toISOString().slice(0, 10); }
+    }
+    function sugUsed() {
+        try {
+            const u = JSON.parse(lsGet(SUG_LS.usage) || '{}');
+            return u.day === quotaDay() ? (u.n || 0) : 0;
+        } catch (err) { return 0; }
+    }
+    function sugCount(n) {
+        lsSet(SUG_LS.usage, JSON.stringify({ day: quotaDay(), n: n === undefined ? sugUsed() + 1 : n }));
+    }
+
+    // ---------- rendering ----------
+    function clearSuggestion() {
+        if (!sug.active) return;
+        sug.active = null;
+        editorWrapper.classList.remove('suggesting');
+        suggestBar.classList.remove('open');
+        suggestLayer.innerHTML = '';
+        contentInput.style.paddingBottom = sug.padBackup;
+        syncLayerScroll();
+    }
+
+    function showSuggestion(base, edits) {
+        sug.active = { base, edits };
+        let html = '', last = 0;
+        for (const ed of edits) {
+            html += escapeHtml(base.slice(last, ed.s));
+            if (ed.e > ed.s) html += '<del class="sg-del">' + escapeHtml(base.slice(ed.s, ed.e)) + '</del>';
+            if (ed.ins) html += '<ins class="sg-ins">' + escapeHtml(ed.ins) + '</ins>';
+            last = ed.e;
+        }
+        html += escapeHtml(base.slice(last)) + '\n';
+        suggestLayer.innerHTML = html;
+        sug.padBackup = contentInput.style.paddingBottom;
+        editorWrapper.classList.add('suggesting');
+        suggestBar.classList.add('open');
+        // inserted lines make the layer taller than the textarea: let the textarea scroll that far too
+        const extra = suggestLayer.scrollHeight - contentInput.scrollHeight;
+        if (extra > 0) {
+            const pb = parseFloat(getComputedStyle(contentInput).paddingBottom) || 0;
+            contentInput.style.paddingBottom = (pb + extra) + 'px';
+        }
+        syncLayerScroll();
+        const firstNode = suggestLayer.querySelector('del,ins');
+        if (firstNode) {
+            const top = firstNode.offsetTop;
+            if (top < contentInput.scrollTop || top > contentInput.scrollTop + contentInput.clientHeight - 60) {
+                contentInput.scrollTop = Math.max(0, top - 80);
+                syncLayerScroll();
+            }
+        }
+    }
+
+    function acceptSuggestion() {
+        const a = sug.active;
+        if (!a) return;
+        if (contentInput.value !== a.base) return clearSuggestion();
+        const first = a.edits[0].s, lastEnd = a.edits[a.edits.length - 1].e;
+        let seg = '', pos = first;
+        for (const ed of a.edits) {
+            seg += a.base.slice(pos, ed.s) + ed.ins;
+            pos = ed.e;
+        }
+        clearSuggestion();
+        replaceRange(first, lastEnd, seg, first + seg.length);
+        contentInput.focus();
+    }
+
+    function rejectSuggestion() {
+        if (!sug.active) return;
+        clearSuggestion();
+        contentInput.focus();
+    }
+
+    // ---------- turning the model's answer into safe edits ----------
+    const TOKEN_RE = /[\p{L}\p{N}_]+|\s+|[^\p{L}\p{N}_\s]/gu;
+
+    // Word-level diff of original -> replacement: returns hunks {o1,o2,text} in original coordinates
+    function diffHunks(orig, repl) {
+        const A = orig.match(TOKEN_RE) || [], B = repl.match(TOKEN_RE) || [];
+        if (A.length * B.length > 250000) return [{ o1: 0, o2: orig.length, text: repl }];
+        const n = A.length, m = B.length;
+        const L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+        for (let i = n - 1; i >= 0; i--) {
+            for (let j = m - 1; j >= 0; j--) {
+                L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+            }
+        }
+        const hunks = [];
+        let i = 0, j = 0, pos = 0, cur = null;
+        const flush = () => { if (cur) { hunks.push(cur); cur = null; } };
+        while (i < n || j < m) {
+            if (i < n && j < m && A[i] === B[j]) {
+                flush();
+                pos += A[i].length; i++; j++;
+            } else if (j < m && (i >= n || L[i][j + 1] >= L[i + 1][j])) {
+                if (!cur) cur = { o1: pos, o2: pos, text: '' };
+                cur.text += B[j++];
+            } else {
+                if (!cur) cur = { o1: pos, o2: pos, text: '' };
+                pos += A[i].length; cur.o2 = pos; i++;
+            }
+        }
+        flush();
+        return hunks;
+    }
+
+    function normalizeEdits(win, offset, raw) {
+        const out = [];
+        const full = contentInput.value;
+        for (const r of (raw && raw.edits) || []) {
+            if (!r || typeof r.original !== 'string' || typeof r.replacement !== 'string') continue;
+            const orig = r.original, repl = r.replacement;
+            if (!orig || orig === repl) continue;
+            const i = win.indexOf(orig);
+            if (i < 0 || win.indexOf(orig, i + 1) >= 0) continue;   // must exist exactly once
+            for (const h of diffHunks(orig, repl)) {
+                const s = offset + i + h.o1, e = offset + i + h.o2;
+                if (full.slice(s, e) === h.text) continue;
+                out.push({ s, e, ins: h.text });
+            }
+        }
+        out.sort((a, b) => a.s - b.s || a.e - b.e);
+        const clean = [];
+        for (const ed of out) {
+            if (clean.length && ed.s < clean[clean.length - 1].e) continue;   // overlap
+            clean.push(ed);
+            if (clean.length >= SUG_MAX_EDITS) break;
+        }
+        return clean;
+    }
+
+    // ---------- Gemini calls ----------
+    async function geminiFetch(path, init, timeoutMs) {
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), timeoutMs || 30000);
+        try {
+            const res = await fetch(GEMINI_API + path, {
+                ...init,
+                signal: ctl.signal,
+                headers: { 'x-goog-api-key': (init && init.key) || sugKey(), 'Content-Type': 'application/json' }
+            });
+            let body = null;
+            try { body = await res.json(); } catch (err) { /* not json */ }
+            return { res, body };
+        } finally { clearTimeout(t); }
+    }
+
+    function apiMessage(body) { return (body && body.error && body.error.message) || ''; }
+
+    async function listGeminiModels(key) {
+        const ids = [];
+        let token = '';
+        for (let page = 0; page < 4; page++) {
+            const { res, body } = await geminiFetch('/models?pageSize=200' + (token ? '&pageToken=' + encodeURIComponent(token) : ''), { key });
+            if (!res.ok) {
+                const err = new Error(apiMessage(body) || 'HTTP ' + res.status);
+                err.status = res.status;
+                throw err;
+            }
+            for (const m of body.models || []) {
+                const id = (m.name || '').replace(/^models\//, '');
+                if (!/^(gemini|gemma)/.test(id)) continue;
+                if (/(tts|image|live|embedding|audio|robotics|computer|aqa|veo|imagen|vision|learnlm)/.test(id)) continue;
+                if ((m.supportedGenerationMethods || []).indexOf('generateContent') < 0) continue;
+                ids.push(id);
+            }
+            token = body.nextPageToken || '';
+            if (!token) break;
+        }
+        return Array.from(new Set(ids)).sort().reverse();
+    }
+
+    async function requestSuggestion() {
+        const model = sugModel();
+        const full = contentInput.value;
+        if (!full.trim()) return;
+        // window of text around the caret
+        let a = 0, b = full.length;
+        if (full.length > SUG_WINDOW) {
+            const c = contentInput.selectionStart;
+            a = Math.max(0, c - SUG_WINDOW / 2);
+            b = Math.min(full.length, a + SUG_WINDOW);
+            a = Math.max(0, b - SUG_WINDOW);
+            const nl = full.indexOf('\n', a);
+            if (a > 0 && nl >= 0 && nl < c) a = nl + 1;
+        }
+        const win = full.slice(a, b);
+        const cursor = Math.min(Math.max(contentInput.selectionStart - a, 0), win.length);
+        const kind = (typeof FILE_TYPE_NAMES !== 'undefined' && FILE_TYPE_NAMES[currentExt]) || 'plain text';
+        const fileName = (titleInput.value.trim() || CONFIG.newFileName || 'untitled').slice(0, 120);
+
+        sug.pending = true;
+        sug.lastChecked = full;
+        sug.lastRequestAt = Date.now();
+        sugCount();
+        updateSuggestInfo();
+        try {
+            const { res, body } = await geminiFetch(`/models/${encodeURIComponent(model)}:generateContent`, {
+                method: 'POST',
+                body: JSON.stringify({
+                    systemInstruction: { parts: [{ text: SUG_SYSTEM }] },
+                    contents: [{ role: 'user', parts: [{ text: `FILE NAME: ${fileName}\nFILE TYPE: ${kind}\nCURSOR OFFSET: ${cursor}\nTEXT:\n${win}` }] }],
+                    generationConfig: { responseMimeType: 'application/json', responseSchema: SUG_SCHEMA, temperature: 0 }
+                })
+            });
+            if (!res.ok) return handleSuggestError(res.status, apiMessage(body));
+            if (contentInput.value !== full) return;                 // the user kept typing: stale
+            const parts = body && body.candidates && body.candidates[0] && body.candidates[0].content && body.candidates[0].content.parts;
+            const text = (parts || []).map((p) => p.text || '').join('');
+            let json = null;
+            try { json = JSON.parse(text); } catch (err) { return; }
+            const edits = normalizeEdits(win, a, json);
+            if (edits.length) showSuggestion(full, edits);
+        } catch (err) {
+            sug.pausedUntil = Date.now() + 60000;
+        } finally {
+            sug.pending = false;
+        }
+    }
+
+    function handleSuggestError(status, msg) {
+        if (status === 429) {
+            const daily = /day|daily/i.test(msg);
+            if (daily) sugCount(sugBudget(sugModel()));       // today's quota is gone
+            sug.pausedUntil = Date.now() + (daily ? 30 : 5) * 60000;
+            showToast(daily ? 'Hết quota Gemini hôm nay, gợi ý sửa tạm dừng.' : 'Gemini báo quá giới hạn, tạm nghỉ vài phút.');
+        } else if (status === 400 && /api key/i.test(msg) || status === 401 || status === 403) {
+            sug.enabled = false;
+            lsSet(SUG_LS.enabled, 'off');
+            showToast('Gemini API key không hợp lệ hoặc không có quyền. Đã tắt gợi ý sửa.');
+        } else if (status === 404) {
+            sug.pausedUntil = Date.now() + 10 * 60000;
+            showToast('Mô hình Gemini này không dùng được, hãy chọn mô hình khác.');
+        } else {
+            sug.pausedUntil = Date.now() + 2 * 60000;
+        }
+        updateSuggestMenu();
+    }
+
+    // ---------- scheduler ----------
+    function sugTick() {
+        sug.timer = setTimeout(sugTick, 1000);
+        if (sug.active && contentInput.value !== sug.active.base) clearSuggestion();
+        if (!sug.enabled || !sugReady() || sug.pending || sug.active) return;
+        if (document.hidden || !navigator.onLine) return;
+        const now = Date.now();
+        if (now < sug.pausedUntil || now - sug.lastInputAt < SUG_IDLE_MS) return;
+        if (now - sug.lastRequestAt < sugInterval(sugModel()) * 1000) return;
+        if (contentInput.value === sug.lastChecked || !contentInput.value.trim()) return;   // nothing new to check
+        if (sugUsed() >= sugBudget(sugModel())) return;                                      // quota for today used up
+        requestSuggestion();
+    }
+
+    function startSuggest() {
+        clearTimeout(sug.timer);
+        sug.timer = setTimeout(sugTick, 1000);
+    }
+
+    function onSuggestInput() {
+        sug.lastInputAt = Date.now();
+        if (sug.active) clearSuggestion();
+    }
+    contentInput.addEventListener('beforeinput', () => { if (sug.active) clearSuggestion(); });
+    contentInput.addEventListener('keydown', (e) => {
+        if (!sug.active) return;
+        if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); e.stopImmediatePropagation(); acceptSuggestion(); }
+        else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); rejectSuggestion(); }
+        else if ((e.ctrlKey || e.metaKey) && !['c', 'a'].includes(e.key.toLowerCase())) clearSuggestion();
+    }, true);
+    contentInput.addEventListener('input', onSuggestInput);
+    window.addEventListener('blur', () => { /* keep suggestion while the window is in the background */ });
+
+    // ---------- menu + dialog ----------
+    function updateSuggestMenu() {
+        if (!sugSummary) return;
+        const on = sug.enabled && sugReady();
+        sugSummary.textContent = on ? `Bật • mỗi ${fmtDuration(sugInterval(sugModel()))}` : (sugKey() ? 'Tắt' : 'Chưa có API key');
+    }
+
+    function updateSuggestInfo() {
+        updateSuggestMenu();
+        if (!sugInfo) return;
+        const model = sugModel();
+        if (!model) { sugInfo.textContent = 'Nhập API key và nhấn Save để chọn mô hình.'; return; }
+        sugInfo.textContent = `Kiểm tra mỗi ${fmtDuration(sugInterval(model))} (tối đa 5 phút). Giới hạn dùng ${sugBudget(model)}/${sugRpd(model)} lượt mỗi ngày (${Math.round(SUG_QUOTA_USE * 100)}% quota). Hôm nay đã dùng ${sugUsed()}/${sugBudget(model)}.`;
+    }
+
+    function fillModelSelect(ids, selected) {
+        sugModelSel.innerHTML = '';
+        for (const id of ids) {
+            const o = document.createElement('option');
+            o.value = id; o.textContent = id;
+            sugModelSel.appendChild(o);
+        }
+        if (selected && ids.indexOf(selected) < 0) {
+            const o = document.createElement('option');
+            o.value = selected; o.textContent = selected;
+            sugModelSel.appendChild(o);
+        }
+        if (selected) sugModelSel.value = selected;
+    }
+
+    function refreshSuggestControls() {
+        const hasKey = !!sugKey();
+        const model = sugModel();
+        const ids = sugModelList();
+        fillModelSelect(ids, model);
+        sugModelSel.disabled = !hasKey || !sugModelSel.options.length;
+        sugRpdInput.disabled = !model;
+        sugRpdInput.value = model ? sugRpd(model) : '';
+        sugToggle.disabled = !sugReady();
+        sugToggle.checked = sug.enabled && sugReady();
+        sugKeyInput.value = hasKey ? '••••••••••••••••' : '';
+        sugKeyInput.dataset.masked = hasKey ? '1' : '';
+        sugKeyStatus.textContent = hasKey ? 'Đã lưu API key trong trình duyệt này.' : '';
+        sugKeyStatus.className = 'dlg-meta' + (hasKey ? ' ok' : '');
+        updateSuggestInfo();
+    }
+
+    function suggestDialogOpen() { return sugDialog.classList.contains('open'); }
+    function openSuggestDialog() {
+        refreshSuggestControls();
+        sugDialog.classList.add('open');
+        if (sugKey() && !sugModelList().length) saveSuggestKey(true);
+    }
+    function closeSuggestDialog() { sugDialog.classList.remove('open'); }
+
+    sugKeyInput.addEventListener('focus', () => {
+        if (sugKeyInput.dataset.masked) { sugKeyInput.value = ''; sugKeyInput.dataset.masked = ''; }
+    });
+    sugKeyInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); saveSuggestKey(); } });
+
+    async function saveSuggestKey(reuse) {
+        const typed = sugKeyInput.value.trim();
+        const key = reuse === true || sugKeyInput.dataset.masked ? sugKey() : typed;
+        if (!key) { sugKeyStatus.textContent = 'Hãy nhập Gemini API key.'; sugKeyStatus.className = 'dlg-meta err'; return; }
+        sugSaveBtn.disabled = true;
+        sugKeyStatus.textContent = 'Đang kiểm tra key…';
+        sugKeyStatus.className = 'dlg-meta';
+        try {
+            const ids = await listGeminiModels(key);
+            if (!ids.length) throw new Error('Key hợp lệ nhưng không có mô hình nào dùng được.');
+            lsSet(SUG_LS.key, key);
+            lsSet(SUG_LS.models, JSON.stringify(ids));
+            let model = sugModel();
+            if (ids.indexOf(model) < 0) {
+                model = ids.find((i) => /flash-lite/.test(i) && !/preview|exp/.test(i)) ||
+                        ids.find((i) => /flash/.test(i) && !/preview|exp/.test(i)) || ids[0];
+                lsSet(SUG_LS.model, model);
+            }
+            refreshSuggestControls();
+            sugKeyStatus.textContent = `Đã lưu. Tìm thấy ${ids.length} mô hình.`;
+            sugKeyStatus.className = 'dlg-meta ok';
+        } catch (err) {
+            sugKeyStatus.textContent = (err.status === 400 || err.status === 403 || err.status === 401)
+                ? 'API key không hợp lệ.' : 'Không kiểm tra được key: ' + (err.message || err);
+            sugKeyStatus.className = 'dlg-meta err';
+        } finally {
+            sugSaveBtn.disabled = false;
+        }
+    }
+
+    function onSuggestToggle() {
+        sug.enabled = sugToggle.checked && sugReady();
+        lsSet(SUG_LS.enabled, sug.enabled ? 'on' : 'off');
+        if (!sug.enabled) clearSuggestion();
+        else { sug.lastChecked = null; sug.pausedUntil = 0; sug.lastRequestAt = 0; }
+        updateSuggestInfo();
+    }
+    function onSuggestModel() {
+        lsSet(SUG_LS.model, sugModelSel.value);
+        sugRpdInput.disabled = false;
+        sugRpdInput.value = sugRpd(sugModelSel.value);
+        sug.pausedUntil = 0;
+        updateSuggestInfo();
+    }
+    function onSuggestRpd() {
+        const model = sugModel();
+        const n = Math.round(Number(sugRpdInput.value));
+        if (!model || !(n > 0)) return;
+        let map = {};
+        try { map = JSON.parse(lsGet(SUG_LS.rpd) || '{}') || {}; } catch (err) { /* reset */ }
+        map[model] = Math.min(n, 1000000);
+        lsSet(SUG_LS.rpd, JSON.stringify(map));
+        updateSuggestInfo();
+    }
+    sugToggle.addEventListener('change', onSuggestToggle);
+    sugModelSel.addEventListener('change', onSuggestModel);
+    sugRpdInput.addEventListener('input', onSuggestRpd);
+
+    startSuggest();
+
+    // ------------------------------------------------------------------
     // App lifecycle
     // ------------------------------------------------------------------
     function restartApp() {
@@ -1694,6 +2344,9 @@
     applyTheme();
     updateSpellMenu();
     updateEngineInfo();
+    updateSuggestMenu();
+    updateWordCount();
+    updateFileTypeLabel();
     onEditorChange();
     // pick the spell-check engine (Gemini Nano or dictionaries) once the page has settled
     const startSpell = () => setTimeout(syncSpellEngine, 800);
@@ -1705,7 +2358,8 @@
         newFile, openFile, saveFile, saveFileAs,
         handleMenuAction, toggleFindReplace, findNext, replaceOne, replaceAll,
         insertMD, insertLinePrefix, insertCodeBlock,
-        restartApp, closeAutoSavePrompt, enableAutoSave, toggleDarkMode,
+        restartApp, showAutoSavePrompt, closeAutoSavePrompt, enableAutoSave, setThemeMode,
+        openSuggestDialog, closeSuggestDialog, saveSuggestKey, acceptSuggestion, rejectSuggestion,
         toggleSpellCheck, openSpellDialog, closeSpellDialog, applySpellDialog, downloadGeminiNano
     });
 })();
