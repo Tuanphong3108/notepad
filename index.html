@@ -327,6 +327,10 @@
             <span class="material-symbols-outlined">translate</span>
             <span class="menu-text">Ngôn ngữ kiểm tra<span id="spellLangSummary" class="menu-subtext"></span></span>
         </div>
+        <div class="menu-item" id="dictItem" onclick="openDictDialog()">
+            <span class="material-symbols-outlined">menu_book</span>
+            <span class="menu-text">Từ điển của tôi<span id="dictSummary" class="menu-subtext"></span></span>
+        </div>
         <div class="menu-item" id="suggestItem" onclick="openSuggestDialog()">
             <span class="material-symbols-outlined">auto_fix_high</span>
             <span class="menu-text">Gợi ý sửa<span id="sugSummary" class="menu-subtext"></span></span>
@@ -477,6 +481,22 @@
         <div class="bubble-actions">
             <button class="dlg-btn" onclick="closeAutoSavePrompt()">Không</button>
             <button class="dlg-btn primary" onclick="enableAutoSave()">Bật</button>
+        </div>
+    </div>
+
+    <!-- Personal dictionary dialog -->
+    <div id="dictDialog" class="dlg-overlay" onclick="closeDictDialog()">
+        <div class="dlg-card" role="dialog" aria-modal="true" aria-labelledby="dictTitle" onclick="event.stopPropagation()">
+            <h2 id="dictTitle" class="dlg-title">Từ điển của tôi</h2>
+            <p class="dlg-sub">Các từ ở đây sẽ không bị gạch chân khi kiểm tra chính tả.</p>
+            <div class="dlg-line">
+                <input id="dictInput" class="dlg-search" type="text" placeholder="Thêm một từ..." autocomplete="off" spellcheck="false">
+                <button class="dlg-btn primary" onclick="addDictWord()">Thêm</button>
+            </div>
+            <div id="dictList" class="dlg-list"></div>
+            <div class="dlg-actions">
+                <button class="dlg-btn primary" onclick="closeDictDialog()">Đóng</button>
+            </div>
         </div>
     </div>
 

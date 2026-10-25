@@ -81,6 +81,10 @@
     const lineGutter = $('lineGutter');
     const lineGutterInner = $('lineGutterInner');
     const lineMirror = $('lineMirror');
+    const dictDialog = $('dictDialog');
+    const dictList = $('dictList');
+    const dictInput = $('dictInput');
+    const dictSummary = $('dictSummary');
     const spellLayer = $('spellLayer');
     const editorWrapper = contentInput.parentElement;
     const spellToggle = $('spellCheckToggle');
@@ -179,7 +183,7 @@
         toast.innerText = msg;
         toast.classList.add('show');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+        toastTimer = setTimeout(() => toast.classList.remove('show'), Math.min(10000, 3000 + String(msg).length * 40));
     }
 
     // The prompt is a chat bubble anchored under the Auto Save switch.
@@ -807,6 +811,7 @@
         if (e.key === 'Escape') {
             if (spellDialogOpen()) { closeSpellDialog(); return; }
             if (suggestDialogOpen()) { closeSuggestDialog(); return; }
+            if (dictDialogOpen()) { closeDictDialog(); return; }
             if (sug.active) { rejectSuggestion(); return; }
             if (autoSavePromptOpen()) { closeAutoSavePrompt(); return; }
             if (contextMenu.style.display === 'block') {
@@ -1495,9 +1500,67 @@
     } catch (err) { /* empty dictionary */ }
     const dictKey = (w) => w.normalize('NFC').replace(/’/g, "'").toLowerCase();
 
+    function saveUserDict() {
+        lsSet(USER_DICT_KEY, JSON.stringify(Array.from(userDict)));
+        updateDictSummary();
+    }
+
+    function updateDictSummary() {
+        dictSummary.textContent = userDict.size ? `${userDict.size} từ` : 'Chưa có từ nào';
+    }
+
+    function renderDictList() {
+        const words = Array.from(userDict).sort((x, y) => x.localeCompare(y));
+        dictList.textContent = '';
+        if (!words.length) {
+            const empty = document.createElement('div');
+            empty.className = 'dlg-empty';
+            empty.textContent = 'Từ điển trống. Chuột phải vào từ bị gạch chân > Chính tả > Thêm vào từ điển, hoặc nhập từ ở trên.';
+            dictList.append(empty);
+            return;
+        }
+        for (const w of words) {
+            const row = document.createElement('div');
+            row.className = 'dlg-row dict-row';
+            const name = document.createElement('span');
+            name.className = 'dlg-name';
+            name.textContent = w;
+            const del = document.createElement('button');
+            del.className = 'dict-del';
+            del.title = 'Xóa khỏi từ điển';
+            del.innerHTML = '<span class="material-symbols-outlined">delete</span>';
+            del.addEventListener('click', () => {
+                userDict.delete(w);
+                saveUserDict();
+                spell.cache.clear();
+                renderSpell(false);
+                renderDictList();
+            });
+            row.append(name, del);
+            dictList.append(row);
+        }
+    }
+
+    function dictDialogOpen() { return dictDialog.classList.contains('open'); }
+    function openDictDialog() { renderDictList(); dictInput.value = ''; dictDialog.classList.add('open'); }
+    function closeDictDialog() { dictDialog.classList.remove('open'); }
+    function addDictWord() {
+        const w = dictInput.value.trim();
+        if (!w) return;
+        if (/\s/.test(w)) return showToast('Chỉ nhập từng từ một.');
+        userDict.add(dictKey(w));
+        saveUserDict();
+        dictInput.value = '';
+        spell.cache.clear();
+        renderSpell(false);
+        renderDictList();
+    }
+    dictInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addDictWord(); } });
+    updateDictSummary();
+
     function addToUserDict(word) {
         userDict.add(dictKey(word));
-        lsSet(USER_DICT_KEY, JSON.stringify(Array.from(userDict)));
+        saveUserDict();
         hideSpellSubmenu();
         contextMenu.style.display = 'none';
         renderSpell(false);
@@ -1862,7 +1925,9 @@
     const SUG_SYSTEM = [
         'You are the "next edit suggestion" engine of a text/code editor, like the one in VS Code.',
         'You receive FILE NAME and FILE TYPE (use them as context: what kind of document this is and which language/syntax it should follow) and the TEXT of the file.',
-        'Look for clear, objective mistakes only: typos, misspellings, grammar errors, wrong punctuation, broken syntax, or an obviously unfinished sentence/statement right at CURSOR that can be completed. Report at most ' + SUG_MAX_EDITS + '.',
+        'Look for clear, objective mistakes only: typos, misspellings, grammar errors, wrong punctuation, syntax errors, or an obviously unfinished sentence/statement right at CURSOR that can be completed. Report at most ' + SUG_MAX_EDITS + '.',
+        'SYNTAX: judge the file by its FILE TYPE and fix real syntax errors of that format: missing or extra brackets, braces, parentheses, quotes, commas or semicolons, invalid keywords, malformed tags or attributes, unclosed blocks (JavaScript, JSON, HTML, CSS, Python indentation/colons, Batch, PowerShell, VBScript, Registry .reg headers/quotes, Markdown fences/links, .lang key=value lines). If a PARSER ERROR line is given, it is a real error reported by a parser: fix that first, with the smallest change.',
+        'For plain text and Markdown check the natural language; for code check the syntax and the spelling of comments and strings, not style.',
         'MOST OF THE TIME THE TEXT IS ALREADY FINE. In that case return {"edits":[]}. An empty list is the normal, expected, correct answer.',
         'Never invent a change just to return something. Never improve style, tone, wording or formatting, never translate, never rename identifiers, never "polish". If you are not sure something is wrong, leave it alone.',
         'Keep the language of the document. Do not touch anything that is correct, and never remove or rewrite content that is intentional (names, code, jargon, slang, abbreviations).',
@@ -2126,6 +2191,10 @@
         const cursor = Math.min(Math.max(contentInput.selectionStart - a, 0), win.length);
         const kind = (typeof FILE_TYPE_NAMES !== 'undefined' && FILE_TYPE_NAMES[currentExt]) || 'plain text';
         const fileName = (titleInput.value.trim() || CONFIG.newFileName || 'untitled').slice(0, 120);
+        let hint = '';
+        if (currentExt === 'json' && full.length === win.length) {
+            try { JSON.parse(full); } catch (err) { hint = `PARSER ERROR: ${String(err.message).slice(0, 200)}\n`; }
+        }
 
         sug.pending = true;
         sug.lastChecked = full;
@@ -2137,40 +2206,55 @@
                 method: 'POST',
                 body: JSON.stringify({
                     systemInstruction: { parts: [{ text: SUG_SYSTEM }] },
-                    contents: [{ role: 'user', parts: [{ text: `FILE NAME: ${fileName}\nFILE TYPE: ${kind}\nCURSOR OFFSET: ${cursor}\nTEXT:\n${win}` }] }],
+                    contents: [{ role: 'user', parts: [{ text: `FILE NAME: ${fileName}\nFILE TYPE: ${kind}\n${hint}CURSOR OFFSET: ${cursor}\nTEXT:\n${win}` }] }],
                     generationConfig: { responseMimeType: 'application/json', responseSchema: SUG_SCHEMA, temperature: 0 }
                 })
             });
-            if (!res.ok) return handleSuggestError(res.status, apiMessage(body));
+            if (!res.ok) return handleSuggestError(res.status, apiMessage(body) || res.statusText);
             if (contentInput.value !== full) return;                 // the user kept typing: stale
+            const block = body && body.promptFeedback && body.promptFeedback.blockReason;
+            if (block) {
+                sug.pausedUntil = Date.now() + 2 * 60000;
+                return showToast(`Gemini từ chối yêu cầu: ${block}`);
+            }
             const parts = body && body.candidates && body.candidates[0] && body.candidates[0].content && body.candidates[0].content.parts;
             const text = (parts || []).map((p) => p.text || '').join('');
             let json = null;
-            try { json = JSON.parse(text); } catch (err) { return; }
+            try { json = JSON.parse(text); } catch (err) {
+                const why = body && body.candidates && body.candidates[0] && body.candidates[0].finishReason;
+                sug.pausedUntil = Date.now() + 60000;
+                return showToast(`Gemini trả về dữ liệu không đọc được${why ? ' (' + why + ')' : ''}.`);
+            }
             const edits = normalizeEdits(win, a, json);
             if (edits.length) showSuggestion(full, edits);
         } catch (err) {
             sug.pausedUntil = Date.now() + 60000;
+            showToast(err && err.name === 'AbortError'
+                ? 'Gemini không phản hồi (quá 30 giây).'
+                : `Không gọi được Gemini: ${(err && err.message) || err}`);
         } finally {
             sug.pending = false;
         }
     }
 
     function handleSuggestError(status, msg) {
+        const detail = String(msg || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+        const google = `Gemini lỗi ${status}${detail ? ': ' + detail : ''}`;
         if (status === 429) {
-            const daily = /day|daily/i.test(msg);
+            const daily = /day|daily/i.test(detail);
             if (daily) sugCount(sugBudget(sugModel()));       // today's quota is gone
             sug.pausedUntil = Date.now() + (daily ? 30 : 5) * 60000;
-            showToast(daily ? 'Hết quota Gemini hôm nay, gợi ý sửa tạm dừng.' : 'Gemini báo quá giới hạn, tạm nghỉ vài phút.');
-        } else if (status === 400 && /api key/i.test(msg) || status === 401 || status === 403) {
+            showToast(google + (daily ? ' (hết quota hôm nay, tạm dừng)' : ' (tạm nghỉ vài phút)'));
+        } else if ((status === 400 && /api key/i.test(detail)) || status === 401 || status === 403) {
             sug.enabled = false;
             lsSet(SUG_LS.enabled, 'off');
-            showToast('Gemini API key không hợp lệ hoặc không có quyền. Đã tắt gợi ý sửa.');
+            showToast(google + ' — đã tắt gợi ý sửa.');
         } else if (status === 404) {
             sug.pausedUntil = Date.now() + 10 * 60000;
-            showToast('Mô hình Gemini này không dùng được, hãy chọn mô hình khác.');
+            showToast(google + ' — hãy chọn mô hình khác.');
         } else {
             sug.pausedUntil = Date.now() + 2 * 60000;
+            showToast(google);
         }
         updateSuggestMenu();
     }
@@ -2359,7 +2443,7 @@
         handleMenuAction, toggleFindReplace, findNext, replaceOne, replaceAll,
         insertMD, insertLinePrefix, insertCodeBlock,
         restartApp, showAutoSavePrompt, closeAutoSavePrompt, enableAutoSave, setThemeMode,
-        openSuggestDialog, closeSuggestDialog, saveSuggestKey, acceptSuggestion, rejectSuggestion,
+        openDictDialog, closeDictDialog, addDictWord, openSuggestDialog, closeSuggestDialog, saveSuggestKey, acceptSuggestion, rejectSuggestion,
         toggleSpellCheck, openSpellDialog, closeSpellDialog, applySpellDialog, downloadGeminiNano
     });
 })();

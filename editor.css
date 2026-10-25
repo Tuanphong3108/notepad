@@ -430,3 +430,10 @@ html[data-theme="dark"] { --sg-del: #F28B82; --sg-ins: #81C995; }
 .editor-gutter div > div { overflow: hidden; }
 .editor-mirror { visibility: hidden; z-index: -1; }
 .editor-mirror > div { min-height: 1px; }
+
+/* ---------- Personal dictionary ---------- */
+#dictDialog .dlg-list { margin-top: 10px; }
+.dict-row { cursor: default; }
+.dict-del { display: inline-flex; border: 0; background: transparent; color: var(--ed-text-2); border-radius: 50%; padding: 4px; cursor: pointer; }
+.dict-del:hover { background: var(--ed-hover); color: var(--ed-error); }
+.dict-del .material-symbols-outlined { font-size: 20px; }
