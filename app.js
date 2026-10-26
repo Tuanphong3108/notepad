@@ -78,6 +78,8 @@
     const autoSavePrompt = $('autoSavePrompt');
     const syntaxLayer = $('syntaxLayer');
     const suggestLayer = $('suggestLayer');
+    const suggestActions = $('suggestActions');
+    const suggestNav = $('suggestNav');
     const lineGutter = $('lineGutter');
     const lineGutterInner = $('lineGutterInner');
     const lineMirror = $('lineMirror');
@@ -330,6 +332,7 @@
     // Opening documents
     // ------------------------------------------------------------------
     function openDocument(text, name) {
+        clearSuggestion();
         contentInput.value = text;
         editHistory.reset(text);
         titleInput.value = name;
@@ -812,7 +815,6 @@
             if (spellDialogOpen()) { closeSpellDialog(); return; }
             if (suggestDialogOpen()) { closeSuggestDialog(); return; }
             if (dictDialogOpen()) { closeDictDialog(); return; }
-            if (sug.active) { rejectSuggestion(); return; }
             if (autoSavePromptOpen()) { closeAutoSavePrompt(); return; }
             if (contextMenu.style.display === 'block') {
                 contextMenu.style.display = 'none';
@@ -877,7 +879,7 @@
     let spellTimer = null;
     let lastScrollbar = -1;
 
-    const layers = [syntaxLayer, spellLayer, searchHighlights, suggestLayer];
+    const layers = [syntaxLayer, spellLayer, searchHighlights, suggestLayer, suggestActions];
 
     function syncLayerScroll() {
         for (const layer of layers) {
@@ -885,6 +887,7 @@
             layer.scrollLeft = contentInput.scrollLeft;
         }
         lineGutter.scrollTop = contentInput.scrollTop;
+        if (sug.active) updateSuggestNav();
     }
 
     // ---- line numbers (a number per logical line, as tall as the wrapped line) ----
@@ -945,7 +948,7 @@
         new ResizeObserver(() => {
             syncScrollbarWidth();
             const w = contentInput.clientWidth;
-            if (w !== lastW) { lastW = w; scheduleGutter(); }   // wrapping changed -> line heights changed
+            if (w !== lastW) { lastW = w; scheduleGutter(); if (sug.active) renderSuggestion(); }   // wrapping changed -> line heights changed
         }).observe(contentInput);
     }
 
@@ -1935,7 +1938,6 @@
         'To add text, return the nearby words as "original" and the same words plus the new text as "replacement".'
     ].join('\n');
 
-    const suggestBar = $('suggestBar');
     const sugDialog = $('suggestDialog');
     const sugKeyInput = $('sugKey');
     const sugKeyStatus = $('sugKeyStatus');
@@ -1955,7 +1957,9 @@
         lastInputAt: 0,
         pausedUntil: 0,
         timer: 0,
-        padBackup: ''
+        padBackup: '',
+        ys: [],
+        raf: 0
     };
 
     const sugKey = () => lsGet(SUG_LS.key) || '';
@@ -2012,66 +2016,271 @@
     }
 
     // ---------- rendering ----------
+    // While suggestions are pending, #suggestLayer is what the user sees: the (syntax coloured) text with
+    // each edit marked in place. The textarea underneath keeps the real text and the caret.
+    const ICON_NO = '<svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" fill="none"/></svg>';
+    const ICON_OK = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>';
+
+    // text nodes of the *original* text (ghost text, gaps and the fake caret do not count)
+    function sugTextNodes(root) {
+        const out = [];
+        let pos = 0;
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode: (n) => n.parentElement && n.parentElement.closest('ins.sg-ins,.sg-gap,.sg-caret')
+                ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT
+        });
+        let n;
+        while ((n = walker.nextNode())) {
+            out.push({ node: n, start: pos, end: pos + n.data.length });
+            pos += n.data.length;
+        }
+        return out;
+    }
+
+    // make a text boundary at `offset`; returns the node that ends exactly there (null for offset 0)
+    function sugSplitAt(root, offset) {
+        for (const it of sugTextNodes(root)) {
+            if (offset > it.start && offset <= it.end) {
+                if (offset < it.end) it.node.splitText(offset - it.start);
+                return it.node;
+            }
+        }
+        return null;
+    }
+
+    function sugPlace(root, left, nodes) {
+        if (left) left.parentNode.insertBefore(nodes, left.nextSibling);
+        else root.insertBefore(nodes, root.firstChild);
+    }
+
+    function sugWrapDeleted(root, s, e) {
+        sugSplitAt(root, e);
+        sugSplitAt(root, s);
+        for (const it of sugTextNodes(root)) {
+            if (it.end > it.start && it.start >= s && it.end <= e) {
+                const del = document.createElement('del');
+                del.className = 'sg-del';
+                it.node.parentNode.insertBefore(del, it.node);
+                del.appendChild(it.node);
+            }
+        }
+    }
+
     function clearSuggestion() {
         if (!sug.active) return;
         sug.active = null;
         editorWrapper.classList.remove('suggesting');
-        suggestBar.classList.remove('open');
-        suggestLayer.innerHTML = '';
+        suggestLayer.textContent = '';
+        suggestActions.textContent = '';
         contentInput.style.paddingBottom = sug.padBackup;
+        updateSuggestNav();
         syncLayerScroll();
     }
 
-    function showSuggestion(base, edits) {
-        sug.active = { base, edits };
-        let html = '', last = 0;
-        for (const ed of edits) {
-            html += escapeHtml(base.slice(last, ed.s));
-            if (ed.e > ed.s) html += '<del class="sg-del">' + escapeHtml(base.slice(ed.s, ed.e)) + '</del>';
-            if (ed.ins) html += '<ins class="sg-ins">' + escapeHtml(ed.ins) + '</ins>';
-            last = ed.e;
+    function renderSuggestion() {
+        const a = sug.active;
+        if (!a) return;
+        const base = a.base;
+        const root = document.createElement('div');
+        if (syntaxActive && syntaxText === base) root.innerHTML = syntaxLayer.innerHTML;   // keep the syntax colours
+        else root.textContent = base + '\n';
+
+        for (let i = a.edits.length - 1; i >= 0; i--) {
+            const ed = a.edits[i];
+            if (ed.e > ed.s) sugWrapDeleted(root, ed.s, ed.e);
+            let left = sugSplitAt(root, ed.e);
+            if (left && left.parentElement && left.parentElement.classList.contains('sg-del')) left = left.parentElement;
+            const frag = document.createDocumentFragment();
+            if (ed.ins) {
+                const ins = document.createElement('ins');
+                ins.className = 'sg-ins';
+                ins.textContent = ed.ins;
+                frag.append(ins);
+            }
+            const gap = document.createElement('span');     // room for the ✕ ✓ buttons of this edit
+            gap.className = 'sg-gap';
+            gap.dataset.i = i;
+            frag.append(gap);
+            sugPlace(root, left, frag);
         }
-        html += escapeHtml(base.slice(last)) + '\n';
-        suggestLayer.innerHTML = html;
-        sug.padBackup = contentInput.style.paddingBottom;
+        if (document.activeElement === contentInput && contentInput.selectionStart === contentInput.selectionEnd) {
+            const c = document.createElement('span');
+            c.className = 'sg-caret';
+            sugPlace(root, sugSplitAt(root, contentInput.selectionStart), c);
+        }
+
+        const st = contentInput.scrollTop;
         editorWrapper.classList.add('suggesting');
-        suggestBar.classList.add('open');
+        suggestLayer.replaceChildren(...root.childNodes);
+        contentInput.style.paddingBottom = sug.padBackup;
         // inserted lines make the layer taller than the textarea: let the textarea scroll that far too
         const extra = suggestLayer.scrollHeight - contentInput.scrollHeight;
         if (extra > 0) {
             const pb = parseFloat(getComputedStyle(contentInput).paddingBottom) || 0;
             contentInput.style.paddingBottom = (pb + extra) + 'px';
         }
+        contentInput.scrollTop = st;
+
+        // one ✕ / ✓ pair at the end of every edit
+        suggestActions.textContent = '';
+        sug.ys = [];
+        a.edits.forEach((ed, i) => {
+            const gap = suggestLayer.querySelector('.sg-gap[data-i="' + i + '"]');
+            if (!gap) return;
+            sug.ys[i] = gap.offsetTop;
+            const box = document.createElement('div');
+            box.className = 'sg-actions';
+            box.style.left = gap.offsetLeft + 'px';
+            box.style.top = gap.offsetTop + 'px';
+            box.addEventListener('mousedown', (e) => e.preventDefault());     // keep the caret in the editor
+            const no = document.createElement('button');
+            no.className = 'sg-no';
+            no.title = 'Từ chối (Esc)';
+            no.setAttribute('aria-label', 'Từ chối');
+            no.innerHTML = ICON_NO;
+            no.addEventListener('click', () => rejectEdit(ed));
+            const ok = document.createElement('button');
+            ok.className = 'sg-ok';
+            ok.title = 'Chấp nhận (Tab)';
+            ok.setAttribute('aria-label', 'Chấp nhận');
+            ok.innerHTML = ICON_OK;
+            ok.addEventListener('click', () => acceptEdit(ed));
+            box.append(no, ok);
+            suggestActions.append(box);
+        });
+        // the buttons follow the text when the editor scrolls, so this container must be as tall as the text layer
+        const spacer = document.createElement('div');
+        spacer.className = 'sg-spacer';
+        spacer.style.top = Math.max(0, suggestLayer.scrollHeight - 1) + 'px';
+        suggestActions.append(spacer);
         syncLayerScroll();
-        const firstNode = suggestLayer.querySelector('del,ins');
-        if (firstNode) {
-            const top = firstNode.offsetTop;
-            if (top < contentInput.scrollTop || top > contentInput.scrollTop + contentInput.clientHeight - 60) {
-                contentInput.scrollTop = Math.max(0, top - 80);
-                syncLayerScroll();
-            }
-        }
+        updateSuggestNav();
     }
 
-    function acceptSuggestion() {
+    function showSuggestion(base, edits) {
+        sug.padBackup = contentInput.style.paddingBottom;
+        sug.active = { base, edits };
+        renderSuggestion();
+    }
+
+    // the text changed (typing, undo, accepting an edit...): edits before the change stay, edits after it
+    // move, edits the change touches are cancelled
+    function reconcileSuggestions() {
         const a = sug.active;
         if (!a) return;
-        if (contentInput.value !== a.base) return clearSuggestion();
-        const first = a.edits[0].s, lastEnd = a.edits[a.edits.length - 1].e;
-        let seg = '', pos = first;
+        const now = contentInput.value, old = a.base;
+        if (now === old) return;
+        const max = Math.min(old.length, now.length);
+        let p = 0;
+        while (p < max && old.charCodeAt(p) === now.charCodeAt(p)) p++;
+        let q = 0;
+        while (q < max - p && old.charCodeAt(old.length - 1 - q) === now.charCodeAt(now.length - 1 - q)) q++;
+        const cs = p, ce = old.length - q, delta = now.length - old.length;
+        const kept = [];
         for (const ed of a.edits) {
-            seg += a.base.slice(pos, ed.s) + ed.ins;
-            pos = ed.e;
+            if (ce < ed.s) kept.push({ s: ed.s + delta, e: ed.e + delta, ins: ed.ins });
+            else if (cs > ed.e) kept.push(ed);
         }
-        clearSuggestion();
-        replaceRange(first, lastEnd, seg, first + seg.length);
-        contentInput.focus();
+        a.base = now;
+        a.edits = kept;
+        if (!kept.length) clearSuggestion();
+        else renderSuggestion();
     }
 
-    function rejectSuggestion() {
-        if (!sug.active) return;
-        clearSuggestion();
+    function acceptEdit(ed) {
+        reconcileSuggestions();
+        const a = sug.active;
+        if (!a) return;
+        const i = a.edits.findIndex((x) => x.s === ed.s && x.e === ed.e && x.ins === ed.ins);
+        if (i < 0) return;
+        a.edits.splice(i, 1);                       // the others are moved by the input handler below
         contentInput.focus();
+        replaceRange(ed.s, ed.e, ed.ins, ed.s + ed.ins.length);
+        reconcileSuggestions();
+    }
+
+    function rejectEdit(ed) {
+        const a = sug.active;
+        if (!a) return;
+        const i = a.edits.findIndex((x) => x.s === ed.s && x.e === ed.e && x.ins === ed.ins);
+        if (i >= 0) a.edits.splice(i, 1);
+        contentInput.focus();
+        if (!a.edits.length) clearSuggestion(); else renderSuggestion();
+    }
+
+    // "↑ N chỉnh sửa cần được xem xét" / "↓ ..." for edits outside the visible part of the editor
+    function suggestOffscreen() {
+        const out = { up: [], down: [] };
+        if (!sug.active) return out;
+        const lh = parseFloat(getComputedStyle(contentInput).lineHeight) || 28;
+        const top = contentInput.scrollTop, bottom = top + contentInput.clientHeight;
+        for (const y of sug.ys || []) {
+            if (y === undefined) continue;
+            if (y + lh <= top) out.up.push(y);
+            else if (y >= bottom) out.down.push(y);
+        }
+        return out;
+    }
+
+    function updateSuggestNav() {
+        const o = suggestOffscreen();
+        const up = $('sgUp'), down = $('sgDown');
+        up.classList.toggle('open', o.up.length > 0);
+        down.classList.toggle('open', o.down.length > 0);
+        $('sgUpN').textContent = o.up.length;
+        $('sgDownN').textContent = o.down.length;
+    }
+
+    function sgNav(dir) {
+        const o = suggestOffscreen();
+        const list = dir < 0 ? o.up : o.down;
+        if (!list.length) return;
+        const y = dir < 0 ? Math.max(...list) : Math.min(...list);
+        contentInput.scrollTo({ top: Math.max(0, y - contentInput.clientHeight / 3), behavior: 'smooth' });
+    }
+
+    // base-text offset under a screen point (the textarea's own hit test is wrong while ghost text shifts the layout)
+    function suggestOffsetAt(x, y) {
+        let pos = null;
+        suggestLayer.style.pointerEvents = 'auto';
+        contentInput.style.pointerEvents = 'none';
+        try {
+            if (document.caretPositionFromPoint) {
+                const p = document.caretPositionFromPoint(x, y);
+                if (p) pos = { node: p.offsetNode, off: p.offset };
+            } else if (document.caretRangeFromPoint) {
+                const r = document.caretRangeFromPoint(x, y);
+                if (r) pos = { node: r.startContainer, off: r.startOffset };
+            }
+        } finally {
+            suggestLayer.style.pointerEvents = '';
+            contentInput.style.pointerEvents = '';
+        }
+        if (!pos || !suggestLayer.contains(pos.node)) return -1;
+        let node = pos.node, off = pos.off;
+        if (node.nodeType === 1) {           // element + child index -> a text node
+            const w = document.createTreeWalker(node.childNodes[off] || node, NodeFilter.SHOW_TEXT);
+            const t = w.nextNode();
+            if (!t) return -1;
+            node = t; off = 0;
+        }
+        let count = 0;
+        const w = document.createTreeWalker(suggestLayer, NodeFilter.SHOW_TEXT);
+        let t;
+        while ((t = w.nextNode())) {
+            const ins = t.parentElement && t.parentElement.closest('ins.sg-ins');
+            if (ins) {
+                if (t === node) {
+                    const gap = ins.nextElementSibling;
+                    const ed = gap && sug.active.edits[Number(gap.dataset.i)];
+                    return ed ? ed.e : -1;
+                }
+                continue;
+            }
+            if (t === node) return Math.min(count + off, sug.active.base.length);
+            count += t.data.length;
+        }
+        return -1;
     }
 
     // ---------- turning the model's answer into safe edits ----------
@@ -2262,7 +2471,7 @@
     // ---------- scheduler ----------
     function sugTick() {
         sug.timer = setTimeout(sugTick, 1000);
-        if (sug.active && contentInput.value !== sug.active.base) clearSuggestion();
+        reconcileSuggestions();
         if (!sug.enabled || !sugReady() || sug.pending || sug.active) return;
         if (document.hidden || !navigator.onLine) return;
         const now = Date.now();
@@ -2278,19 +2487,45 @@
         sug.timer = setTimeout(sugTick, 1000);
     }
 
-    function onSuggestInput() {
+    contentInput.addEventListener('input', () => {
         sug.lastInputAt = Date.now();
-        if (sug.active) clearSuggestion();
-    }
-    contentInput.addEventListener('beforeinput', () => { if (sug.active) clearSuggestion(); });
+        reconcileSuggestions();
+    });
+    // Tab = accept, Esc = cancel, but only for the edit the caret is in; typing in an edit cancels it (reconcile)
     contentInput.addEventListener('keydown', (e) => {
         if (!sug.active) return;
-        if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey) { e.preventDefault(); e.stopImmediatePropagation(); acceptSuggestion(); }
-        else if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); rejectSuggestion(); }
-        else if ((e.ctrlKey || e.metaKey) && !['c', 'a'].includes(e.key.toLowerCase())) clearSuggestion();
+        reconcileSuggestions();
+        if (!sug.active) return;
+        const c = contentInput.selectionStart;
+        if (c !== contentInput.selectionEnd) return;
+        const ed = sug.active.edits.find((x) => c >= x.s && c <= x.e);
+        if (!ed) return;
+        if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey) {
+            e.preventDefault(); e.stopImmediatePropagation();
+            acceptEdit(ed);
+        } else if (e.key === 'Escape') {
+            e.preventDefault(); e.stopImmediatePropagation();
+            rejectEdit(ed);
+        }
     }, true);
-    contentInput.addEventListener('input', onSuggestInput);
-    window.addEventListener('blur', () => { /* keep suggestion while the window is in the background */ });
+    // a click lands on the visible (shifted) text, not on the hidden textarea text
+    contentInput.addEventListener('mousedown', (e) => {
+        if (!sug.active || e.button !== 0 || e.shiftKey || e.detail > 1) return;
+        const off = suggestOffsetAt(e.clientX, e.clientY);
+        if (off < 0) return;
+        e.preventDefault();
+        contentInput.focus();
+        contentInput.setSelectionRange(off, off);
+    }, true);
+    document.addEventListener('selectionchange', () => {
+        if (!sug.active || document.activeElement !== contentInput) return;
+        if (contentInput.selectionStart !== contentInput.selectionEnd) return clearSuggestion();   // a selection can't be drawn over shifted text
+        cancelAnimationFrame(sug.raf);
+        sug.raf = requestAnimationFrame(() => {
+            reconcileSuggestions();
+            if (sug.active) renderSuggestion();            // move the fake caret
+        });
+    });
 
     // ---------- menu + dialog ----------
     function updateSuggestMenu() {
@@ -2443,7 +2678,7 @@
         handleMenuAction, toggleFindReplace, findNext, replaceOne, replaceAll,
         insertMD, insertLinePrefix, insertCodeBlock,
         restartApp, showAutoSavePrompt, closeAutoSavePrompt, enableAutoSave, setThemeMode,
-        openDictDialog, closeDictDialog, addDictWord, openSuggestDialog, closeSuggestDialog, saveSuggestKey, acceptSuggestion, rejectSuggestion,
+        openDictDialog, closeDictDialog, addDictWord, openSuggestDialog, closeSuggestDialog, saveSuggestKey, sgNav,
         toggleSpellCheck, openSpellDialog, closeSpellDialog, applySpellDialog, downloadGeminiNano
     });
 })();
