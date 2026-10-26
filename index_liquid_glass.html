@@ -1,0 +1,1035 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Apply the saved/system theme before first paint (avoids a light flash) -->
+    <script>try{var t=localStorage.getItem("notepad-theme");if(t!=="dark"&&t!=="light")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
+    <title>Notepad Liquid Glass</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="icon.png">
+    <!-- PWA Manifest Link -->
+    <link rel="manifest" href="manifest_liquid.json">
+    
+    <!-- Google Sans Flex, Google Sans Code & Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@100..1000&family=Google+Sans+Code:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+    <link rel="stylesheet" href="editor.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import 'https://esm.run/@material/web/all.js';
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it/dist/markdown-it.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/markdown-it-task-lists/dist/markdown-it-task-lists.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/languages/powershell.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/languages/dos.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@11.9.0/languages/vbscript.min.js"></script>
+    
+    <style>
+        /* ================= Apple Liquid Glass Theme Tokens (HIG iOS 26 / macOS Tahoe) ================= */
+        :root {
+            --lg-accent: #007AFF;
+            --lg-accent-glow: rgba(0, 122, 255, 0.35);
+            --lg-on-accent: #FFFFFF;
+            --lg-danger: #FF3B30;
+            --lg-success: #34C759;
+
+            /* Liquid Glass Material - Light Mode */
+            --lg-glass-bg: rgba(255, 255, 255, 0.44);
+            --lg-glass-bg-elevated: rgba(255, 255, 255, 0.62);
+            --lg-glass-pill: rgba(255, 255, 255, 0.38);
+            --lg-glass-hover: rgba(255, 255, 255, 0.68);
+            --lg-glass-border-top: rgba(255, 255, 255, 0.92);
+            --lg-glass-border-bottom: rgba(255, 255, 255, 0.32);
+            --lg-specular-inset: inset 0 1.5px 1.5px rgba(255, 255, 255, 0.95), inset 0 -1px 2px rgba(255, 255, 255, 0.45), inset 1px 0 1.5px rgba(255, 255, 255, 0.6);
+            --lg-shadow: 0 14px 36px -6px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(15, 23, 42, 0.06);
+            --lg-shadow-float: 0 22px 54px -8px rgba(15, 23, 42, 0.18), 0 6px 18px rgba(15, 23, 42, 0.08);
+
+            /* Content Layer (HIG Golden Rule: Content stays clean & legible, Navigation floats in Liquid Glass) */
+            --lg-canvas-bg: #EEF2F9;
+            --lg-editor-surface: rgba(255, 255, 255, 0.78);
+            --lg-preview-surface: rgba(250, 252, 255, 0.84);
+            --lg-text: #11141C;
+            --lg-text-secondary: rgba(17, 20, 28, 0.58);
+            --lg-text-muted: rgba(17, 20, 28, 0.38);
+            --lg-divider: rgba(17, 20, 28, 0.08);
+            --lg-divider-strong: rgba(17, 20, 28, 0.15);
+            --lg-code-bg: rgba(0, 122, 255, 0.08);
+
+            /* Fluid Physics Springs */
+            --lg-spring-bounce: cubic-bezier(0.28, 1.45, 0.48, 1);
+            --lg-spring-fluid: cubic-bezier(0.22, 1, 0.36, 1);
+            --lg-spring-overshoot: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+            /* editor.css adapter */
+            --ed-surface: rgba(248, 250, 255, 0.78);
+            --ed-text: var(--lg-text);
+            --ed-text-2: var(--lg-text-secondary);
+            --ed-primary: var(--lg-accent);
+            --ed-on-primary: var(--lg-on-accent);
+            --ed-hover: rgba(0, 122, 255, 0.1);
+            --ed-error: var(--lg-danger);
+            --ed-radius: 28px;
+            --ed-btn-radius: 999px;
+            --ed-editor-text: var(--lg-text);
+            --ed-selection: rgba(0, 122, 255, 0.24);
+        }
+
+        html[data-theme="light"] { color-scheme: light; }
+
+        html[data-theme="dark"] {
+            color-scheme: dark;
+            --lg-accent: #0A84FF;
+            --lg-accent-glow: rgba(10, 132, 255, 0.42);
+            --lg-on-accent: #FFFFFF;
+            --lg-danger: #FF453A;
+            --lg-success: #30D158;
+
+            /* Liquid Glass Material - Dark Mode */
+            --lg-glass-bg: rgba(28, 30, 38, 0.48);
+            --lg-glass-bg-elevated: rgba(38, 41, 52, 0.66);
+            --lg-glass-pill: rgba(255, 255, 255, 0.08);
+            --lg-glass-hover: rgba(255, 255, 255, 0.16);
+            --lg-glass-border-top: rgba(255, 255, 255, 0.28);
+            --lg-glass-border-bottom: rgba(255, 255, 255, 0.08);
+            --lg-specular-inset: inset 0 1px 1.5px rgba(255, 255, 255, 0.32), inset 0 -1px 2px rgba(255, 255, 255, 0.08), inset 1px 0 1px rgba(255, 255, 255, 0.14);
+            --lg-shadow: 0 16px 40px -6px rgba(0, 0, 0, 0.55), 0 4px 14px rgba(0, 0, 0, 0.35);
+            --lg-shadow-float: 0 26px 64px -8px rgba(0, 0, 0, 0.72), 0 8px 22px rgba(0, 0, 0, 0.45);
+
+            --lg-canvas-bg: #090B10;
+            --lg-editor-surface: rgba(16, 18, 24, 0.76);
+            --lg-preview-surface: rgba(20, 22, 30, 0.82);
+            --lg-text: #F5F7FA;
+            --lg-text-secondary: rgba(245, 247, 250, 0.62);
+            --lg-text-muted: rgba(245, 247, 250, 0.38);
+            --lg-divider: rgba(255, 255, 255, 0.08);
+            --lg-divider-strong: rgba(255, 255, 255, 0.16);
+            --lg-code-bg: rgba(10, 132, 255, 0.16);
+
+            --ed-surface: rgba(30, 32, 42, 0.76);
+            --ed-hover: rgba(10, 132, 255, 0.18);
+            --ed-selection: rgba(10, 132, 255, 0.32);
+        }
+
+        body {
+            font-family: 'Google Sans Flex', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--lg-canvas-bg);
+            color: var(--lg-text);
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            user-select: none;
+            position: relative;
+        }
+
+        /* ================= Ambient Wallpaper Mesh (for Liquid Glass Lensing) ================= */
+        .ambient-wallpaper {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;
+            background:
+                radial-gradient(circle at 12% 8%, rgba(0, 122, 255, 0.22), transparent 42%),
+                radial-gradient(circle at 86% 12%, rgba(175, 82, 222, 0.20), transparent 45%),
+                radial-gradient(circle at 50% 96%, rgba(52, 199, 89, 0.15), transparent 48%),
+                radial-gradient(circle at 90% 80%, rgba(255, 149, 0, 0.14), transparent 40%);
+        }
+        html[data-theme="dark"] .ambient-wallpaper {
+            background:
+                radial-gradient(circle at 12% 8%, rgba(10, 132, 255, 0.24), transparent 44%),
+                radial-gradient(circle at 86% 12%, rgba(191, 90, 242, 0.20), transparent 46%),
+                radial-gradient(circle at 50% 96%, rgba(48, 209, 88, 0.14), transparent 50%),
+                radial-gradient(circle at 90% 80%, rgba(255, 159, 10, 0.12), transparent 42%);
+        }
+        .ambient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(55px);
+            opacity: 0.65;
+            animation: orbFloat 18s infinite alternate ease-in-out;
+        }
+        .ambient-orb.orb-1 {
+            width: 360px; height: 360px; top: -110px; left: 6%;
+            background: linear-gradient(135deg, #007AFF, #5856D6);
+        }
+        .ambient-orb.orb-2 {
+            width: 320px; height: 320px; top: -90px; right: 8%;
+            background: linear-gradient(135deg, #FF2D55, #AF52DE);
+            animation-delay: -6s;
+        }
+        .ambient-orb.orb-3 {
+            width: 280px; height: 280px; bottom: -110px; left: 38%;
+            background: linear-gradient(135deg, #34C759, #00C7BE);
+            animation-delay: -11s;
+        }
+        @keyframes orbFloat {
+            0% { transform: translate3d(0, 0, 0) scale(1); }
+            50% { transform: translate3d(36px, 18px, 0) scale(1.08); }
+            100% { transform: translate3d(-28px, -14px, 0) scale(0.95); }
+        }
+
+        /* ================= Material Symbols Fill on Hover ================= */
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 450, 'GRAD' 0, 'opsz' 24;
+            transition: font-variation-settings 0.28s var(--lg-spring-bounce), transform 0.28s var(--lg-spring-bounce);
+        }
+        button:hover .material-symbols-outlined,
+        .action-btn:hover .material-symbols-outlined,
+        .menu-item:hover:not(.disabled) .material-symbols-outlined,
+        .apple-icon-btn:hover .material-symbols-outlined {
+            font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+        }
+
+        /* ================= Core Liquid Glass Surface Mixin ================= */
+        .liquid-glass-bar,
+        #contextMenu,
+        #moreOptionsMenu,
+        #spellSubmenu,
+        #findReplaceBar,
+        #autoSavePrompt,
+        .dlg-card,
+        #toast,
+        #suggestNav button {
+            position: relative;
+            background: var(--lg-glass-bg-elevated);
+            backdrop-filter: url(#apple-liquid-lensing) blur(28px) saturate(210%) brightness(1.04);
+            -webkit-backdrop-filter: blur(28px) saturate(210%) brightness(1.04);
+            border: 1px solid var(--lg-glass-border-bottom);
+            border-top-color: var(--lg-glass-border-top);
+            box-shadow: var(--lg-specular-inset), var(--lg-shadow);
+        }
+
+        /* Touch-Point Illumination & Specular Glint */
+        .lg-interactive {
+            position: relative;
+            overflow: hidden;
+            transition:
+                transform 0.38s var(--lg-spring-bounce),
+                background-color 0.28s ease,
+                box-shadow 0.32s ease,
+                max-width 0.45s var(--lg-spring-fluid),
+                padding 0.35s var(--lg-spring-fluid);
+        }
+        .lg-interactive::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            pointer-events: none;
+            background: radial-gradient(
+                120px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+                rgba(255, 255, 255, 0.55),
+                transparent 70%
+            );
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+        html[data-theme="dark"] .lg-interactive::after {
+            background: radial-gradient(
+                120px circle at var(--glow-x, 50%) var(--glow-y, 50%),
+                rgba(255, 255, 255, 0.28),
+                transparent 70%
+            );
+        }
+        .lg-interactive:hover::after { opacity: 1; }
+        .lg-interactive:active { transform: scale(0.92) !important; }
+
+        /* ================= Floating Navigation Bar (HIG Navigation Layer) ================= */
+        .app-header {
+            height: 60px;
+            margin: 10px 14px 0 14px;
+            padding: 0 14px;
+            border-radius: 999px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 20;
+            background: var(--lg-glass-bg);
+            backdrop-filter: url(#apple-liquid-lensing) blur(26px) saturate(200%);
+            -webkit-backdrop-filter: blur(26px) saturate(200%);
+            border: 1px solid var(--lg-glass-border-bottom);
+            border-top-color: var(--lg-glass-border-top);
+            box-shadow: var(--lg-specular-inset), var(--lg-shadow);
+            transition: transform 0.4s var(--lg-spring-fluid), box-shadow 0.4s ease;
+        }
+
+        /* GlassEffectContainer - Grouped capsule controls */
+        .glass-effect-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 4px;
+            border-radius: 999px;
+            background: var(--lg-glass-pill);
+            border: 1px solid var(--lg-glass-border-bottom);
+            border-top-color: var(--lg-glass-border-top);
+            box-shadow: var(--lg-specular-inset);
+        }
+
+        /* Apple Brand Logo Animation */
+        #brandLogo {
+            transition: max-width 0.75s var(--lg-spring-fluid), padding 0.5s var(--lg-spring-fluid), transform 0.4s var(--lg-spring-bounce);
+            max-width: 220px;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            white-space: nowrap;
+            padding: 6px 12px;
+            border-radius: 999px;
+            cursor: pointer;
+        }
+        #brandLogo:hover {
+            transform: scale(1.04);
+            background: var(--lg-glass-hover);
+        }
+        #brandLogo.collapsed {
+            max-width: 42px;
+            padding: 6px 9px;
+        }
+        #brandText {
+            transition: opacity 0.4s ease, transform 0.45s var(--lg-spring-fluid);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+        #brandIcon {
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transform: scale(0) rotate(-15deg);
+            opacity: 0;
+            transition: transform 0.55s var(--lg-spring-bounce), opacity 0.4s ease;
+        }
+        #brandLogo.collapsed #brandIcon {
+            transform: scale(1) rotate(0deg);
+            opacity: 1;
+        }
+        #brandLogo.collapsed #brandText {
+            opacity: 0;
+            transform: translateX(-18px) scale(0.9);
+            pointer-events: none;
+        }
+
+        /* Liquid Glass Action Buttons */
+        .action-btn {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            height: 36px;
+            min-width: 36px;
+            max-width: 36px;
+            padding: 0 8px;
+            border-radius: 999px;
+            overflow: hidden;
+            white-space: nowrap;
+            cursor: pointer;
+            gap: 7px;
+            color: var(--lg-text);
+            transition:
+                max-width 0.45s var(--lg-spring-fluid),
+                padding 0.35s var(--lg-spring-fluid),
+                transform 0.35s var(--lg-spring-bounce),
+                background-color 0.25s ease,
+                box-shadow 0.25s ease;
+        }
+        .action-btn:hover:not(.disabled) {
+            max-width: 185px;
+            padding: 0 14px;
+            background-color: var(--lg-glass-hover);
+            box-shadow: var(--lg-specular-inset), 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-1px) scale(1.03);
+        }
+        .action-btn:active:not(.disabled) {
+            transform: scale(0.93);
+        }
+        /* HIG: Tint selectively — Primary actions only (.glassProminent) */
+        .action-btn.primary {
+            background: linear-gradient(180deg, rgba(0, 122, 255, 0.92), rgba(0, 102, 224, 0.92));
+            color: var(--lg-on-accent);
+            box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.55), 0 4px 14px var(--lg-accent-glow);
+        }
+        .action-btn.primary:hover:not(.disabled) {
+            background: linear-gradient(180deg, rgba(20, 138, 255, 0.98), rgba(0, 110, 235, 0.98));
+            box-shadow: inset 0 1.5px 2px rgba(255, 255, 255, 0.7), 0 6px 18px var(--lg-accent-glow);
+        }
+        .action-label {
+            font-size: 13px;
+            font-weight: 700;
+            opacity: 0;
+            transform: translateX(-4px);
+            transition: opacity 0.28s ease, transform 0.32s var(--lg-spring-fluid);
+        }
+        .action-btn:hover:not(.disabled) .action-label {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .action-btn.disabled { opacity: 0.38; cursor: default; }
+
+        /* Document Title Pill */
+        #noteTitle {
+            color: var(--lg-text);
+            padding: 5px 12px;
+            border-radius: 999px;
+            background: transparent;
+            transition: background-color 0.25s ease, box-shadow 0.25s ease;
+        }
+        #noteTitle:hover, #noteTitle:focus {
+            background: var(--lg-glass-pill);
+            box-shadow: var(--lg-specular-inset);
+        }
+
+        /* Markdown Floating Glass Capsule */
+        #mdToolbar {
+            background: var(--lg-glass-pill);
+            border: 1px solid var(--lg-glass-border-bottom);
+            border-top-color: var(--lg-glass-border-top);
+            box-shadow: var(--lg-specular-inset);
+            border-radius: 999px;
+            padding: 3px 5px;
+            transition: opacity 0.35s var(--lg-spring-fluid), transform 0.4s var(--lg-spring-bounce);
+        }
+
+        /* ================= Switch Overshoot (Strict User Rules: check & close, fixed width & thumb size) ================= */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 52px !important;
+            min-width: 52px !important;
+            max-width: 52px !important;
+            height: 32px !important;
+            flex: 0 0 52px !important;
+            flex-shrink: 0 !important;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 52px !important;
+            height: 32px !important;
+            box-sizing: border-box;
+            background-color: rgba(120, 120, 128, 0.24);
+            border: 1.5px solid var(--lg-glass-border-top);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15), var(--lg-specular-inset);
+            transition: background-color 0.4s var(--lg-spring-overshoot), border-color 0.4s var(--lg-spring-overshoot), box-shadow 0.35s ease;
+            border-radius: 999px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "close";
+            font-family: 'Material Symbols Outlined';
+            font-size: 13px;
+            font-variation-settings: 'FILL' 0, 'wght' 250, 'GRAD' 0, 'opsz' 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 24px !important;
+            width: 24px !important;
+            min-width: 24px !important;
+            min-height: 24px !important;
+            left: 2.5px;
+            bottom: 2.5px;
+            background: rgba(255, 255, 255, 0.92);
+            color: rgba(60, 60, 67, 0.78);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.22), inset 0 1px 1px rgba(255, 255, 255, 1);
+            transition: transform 0.42s var(--lg-spring-overshoot), background-color 0.35s ease, color 0.35s ease, box-shadow 0.35s ease;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: var(--lg-success);
+            border-color: rgba(255, 255, 255, 0.55);
+            box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.4), 0 0 14px rgba(52, 199, 89, 0.38);
+        }
+        input:checked + .slider:before {
+            content: "check";
+            font-size: 13px;
+            font-variation-settings: 'FILL' 0, 'wght' 250, 'GRAD' 0, 'opsz' 20;
+            transform: translateX(20px);
+            background: #FFFFFF;
+            color: var(--lg-success);
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.26), inset 0 1px 1px #FFFFFF;
+        }
+
+        /* ================= Menus & Popovers (Liquid Glass Materialization) ================= */
+        #contextMenu, #moreOptionsMenu, #spellSubmenu {
+            position: fixed;
+            display: none;
+            border-radius: 22px;
+            z-index: 1000;
+            min-width: 236px;
+            padding: 8px;
+            transform-origin: top right;
+            animation: lgMaterialize 0.32s var(--lg-spring-bounce);
+        }
+        #contextMenu { transform-origin: top left; }
+
+        @keyframes lgMaterialize {
+            0% {
+                opacity: 0;
+                transform: scale(0.84) translateY(-8px);
+                filter: blur(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+                filter: blur(0px);
+            }
+        }
+
+        .menu-item {
+            padding: 9px 14px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: transform 0.25s var(--lg-spring-bounce), background-color 0.2s ease, box-shadow 0.2s ease;
+            color: var(--lg-text);
+        }
+        .menu-item:hover:not(.disabled) {
+            background: var(--lg-glass-hover);
+            box-shadow: var(--lg-specular-inset);
+            transform: scale(1.015);
+        }
+        .menu-item:active:not(.disabled) {
+            transform: scale(0.97);
+        }
+        .menu-item.disabled { opacity: 0.38; cursor: default; pointer-events: none; }
+        .menu-item .material-symbols-outlined { font-size: 20px; color: var(--lg-accent); }
+        .menu-item .switch { transform: scale(0.82); transform-origin: right center; margin-left: auto; }
+
+        /* ================= Find & Replace Floating Capsule Bar ================= */
+        #findReplaceBar {
+            display: none;
+            margin: 8px 14px 0 14px;
+            padding: 8px 16px;
+            border-radius: 999px;
+            gap: 10px;
+            align-items: center;
+            z-index: 15;
+            animation: lgSlideMaterialize 0.38s var(--lg-spring-bounce);
+            flex-wrap: wrap;
+        }
+        @keyframes lgSlideMaterialize {
+            0% { opacity: 0; transform: translateY(-16px) scale(0.95); filter: blur(8px); }
+            100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        .fr-input-container {
+            display: flex;
+            align-items: center;
+            background: var(--lg-glass-pill);
+            box-shadow: var(--lg-specular-inset);
+            border-radius: 999px;
+            padding: 0 14px;
+            height: 40px;
+            border: 1px solid var(--lg-glass-border-bottom);
+            border-top-color: var(--lg-glass-border-top);
+            flex: 1;
+            min-width: 190px;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s var(--lg-spring-bounce);
+        }
+        .fr-input-container:focus-within {
+            border-color: var(--lg-accent);
+            box-shadow: var(--lg-specular-inset), 0 0 0 3px var(--lg-accent-glow);
+            transform: scale(1.01);
+        }
+        .fr-input {
+            border: none;
+            outline: none;
+            flex: 1;
+            font-size: 13.5px;
+            padding: 0 8px;
+            background: transparent;
+            color: var(--lg-text);
+        }
+        .fr-pill-btn {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 5px 11px;
+            border-radius: 999px;
+            background: var(--lg-glass-hover);
+            box-shadow: var(--lg-specular-inset);
+            color: var(--lg-accent);
+            transition: transform 0.25s var(--lg-spring-bounce), background-color 0.2s ease;
+        }
+        .fr-pill-btn:hover {
+            transform: scale(1.05);
+            background: var(--lg-accent);
+            color: #FFFFFF;
+        }
+        .fr-pill-btn:active { transform: scale(0.93); }
+
+        /* ================= Content Layer (Concentric Hardware-Aligned Canvas) ================= */
+        #editorArea {
+            display: flex;
+            flex-grow: 1;
+            overflow: hidden;
+            position: relative;
+            z-index: 5;
+            margin: 10px 14px;
+            border-radius: 26px;
+            background: var(--lg-editor-surface);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--lg-glass-border-bottom);
+            border-top-color: var(--lg-glass-border-top);
+            box-shadow: var(--lg-specular-inset), 0 10px 30px rgba(0, 0, 0, 0.06);
+        }
+        .editor-wrapper {
+            position: relative;
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        #noteContent {
+            flex: 1;
+            outline: none;
+            border: none;
+            resize: none;
+            color: var(--lg-text);
+            overflow-y: auto;
+            background: transparent;
+            z-index: 2;
+            position: relative;
+            border-right: 1px solid var(--lg-divider);
+            user-select: text;
+        }
+
+        #searchHighlights mark {
+            background-color: rgba(255, 204, 0, 0.38);
+            color: transparent;
+            border-radius: 4px;
+            border-bottom: 2px solid #FF9500;
+        }
+        #searchHighlights mark.current {
+            background-color: rgba(255, 149, 0, 0.58);
+            border-bottom: 2px solid #FF3B30;
+        }
+
+        #previewPane {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            background-color: var(--lg-preview-surface);
+            display: none;
+            user-select: text;
+        }
+        #previewPane.active { display: block; }
+
+        /* Markdown Preview */
+        .markdown-body h1 { font-size: 2.2rem; font-weight: 850; color: var(--lg-accent); border-bottom: 1px solid var(--lg-divider-strong); padding-bottom: 0.4rem; margin-bottom: 1rem; letter-spacing: -0.02em; }
+        .markdown-body h2 { font-size: 1.7rem; font-weight: 800; margin-top: 1.5rem; letter-spacing: -0.015em; }
+        .markdown-body h3 { font-size: 1.35rem; font-weight: 700; margin-top: 1rem; }
+        .markdown-body strong { font-weight: 800; color: var(--lg-text); }
+        .markdown-body ul { padding-left: 1.5rem; list-style: disc; }
+        .markdown-body ol { padding-left: 1.5rem; list-style: decimal; }
+        .markdown-body .contains-task-list { list-style: none; padding-left: 0.5rem; }
+        .markdown-body a { color: var(--lg-accent); text-decoration: underline; }
+        .markdown-body blockquote { border-left: 4px solid var(--lg-accent); padding-left: 1rem; color: var(--lg-text-secondary); }
+        .markdown-body hr { border-top: 1px solid var(--lg-divider-strong); margin: 1rem 0; }
+        .markdown-body code { background: var(--lg-code-bg); padding: 2px 7px; border-radius: 8px; font-family: 'Google Sans Code', monospace; }
+        .markdown-body pre { background: rgba(15, 18, 26, 0.92); color: #F5F7FA; padding: 16px; border-radius: 18px; overflow-x: auto; box-shadow: inset 0 1px 1px rgba(255,255,255,0.12); }
+        .markdown-body pre code { background: transparent; color: inherit; padding: 0; font-family: 'Google Sans Code', monospace; }
+
+        /* ================= Floating Status Bar Capsule ================= */
+        #statusBar {
+            margin: 0 14px 10px 14px;
+            padding: 5px 18px;
+            border-radius: 999px;
+            background: var(--lg-glass-bg) !important;
+            backdrop-filter: url(#apple-liquid-lensing) blur(22px) saturate(190%);
+            -webkit-backdrop-filter: blur(22px) saturate(190%);
+            border: 1px solid var(--lg-glass-border-bottom) !important;
+            border-top-color: var(--lg-glass-border-top) !important;
+            box-shadow: var(--lg-specular-inset), 0 6px 20px rgba(0, 0, 0, 0.08);
+            z-index: 10;
+        }
+
+        /* ================= Dialogs & Toast in Liquid Glass ================= */
+        .dlg-overlay {
+            backdrop-filter: blur(12px) saturate(140%);
+            -webkit-backdrop-filter: blur(12px) saturate(140%);
+            background: rgba(10, 14, 24, 0.32);
+        }
+        .dlg-card {
+            border-radius: 30px !important;
+            box-shadow: var(--lg-specular-inset), var(--lg-shadow-float) !important;
+            animation: lgMaterialize 0.38s var(--lg-spring-bounce);
+        }
+        .dlg-btn {
+            transition: transform 0.28s var(--lg-spring-bounce), background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .dlg-btn:hover { transform: scale(1.04); }
+        .dlg-btn:active { transform: scale(0.94); }
+        .dlg-btn.primary {
+            background: linear-gradient(180deg, #148EFF, #007AFF) !important;
+            box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 0.6), 0 4px 14px var(--lg-accent-glow);
+        }
+
+        #toast {
+            visibility: hidden;
+            opacity: 0;
+            min-width: 210px;
+            max-width: min(90vw, 480px);
+            text-align: center;
+            color: var(--lg-text);
+            font-weight: 600;
+            font-size: 13.5px;
+            border-radius: 999px;
+            padding: 11px 24px;
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            z-index: 100;
+            transform: translateX(-50%) scale(0.65) translateY(12px);
+            transform-origin: center bottom;
+            transition:
+                transform 0.38s var(--lg-spring-bounce),
+                opacity 0.24s ease,
+                visibility 0s linear 0.38s;
+        }
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            transform: translateX(-50%) scale(1) translateY(0);
+            transition-delay: 0s;
+        }
+
+        /* Loading Indicator (Strict Rule: Rectangular GIF, unstretched width, recolored) */
+        #loading {
+            background: var(--lg-glass-bg-elevated);
+            backdrop-filter: blur(28px) saturate(190%);
+            -webkit-backdrop-filter: blur(28px) saturate(190%);
+        }
+        #loading img {
+            height: 48px;
+            width: auto;
+            filter: brightness(0) saturate(100%) invert(34%) sepia(98%) saturate(2579%) hue-rotate(199deg) brightness(102%) contrast(105%);
+        }
+        html[data-theme="dark"] #loading img {
+            filter: brightness(0) saturate(100%) invert(48%) sepia(93%) saturate(2752%) hue-rotate(195deg) brightness(103%) contrast(104%);
+        }
+
+        /* Custom Subtle Scrollbars */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(120, 120, 128, 0.28);
+            border-radius: 999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(120, 120, 128, 0.48);
+        }
+
+        /* Accessibility Fallbacks (HIG: Reduce Transparency & Reduce Motion) */
+        @media (prefers-reduced-transparency: reduce) {
+            :root {
+                --lg-glass-bg: rgba(248, 250, 252, 0.96);
+                --lg-glass-bg-elevated: #FFFFFF;
+            }
+            html[data-theme="dark"] {
+                --lg-glass-bg: rgba(24, 26, 32, 0.96);
+                --lg-glass-bg-elevated: #1C1E26;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hidden SVG Optical Lensing Filter (Apple Liquid Glass Refraction) -->
+    <svg width="0" height="0" style="position:absolute; pointer-events:none;" aria-hidden="true">
+        <defs>
+            <filter id="apple-liquid-lensing" x="-10%" y="-10%" width="120%" height="120%" color-interpolation-filters="sRGB">
+                <feTurbulence type="fractalNoise" baseFrequency="0.012 0.018" numOctaves="2" seed="7" result="noise" />
+                <feGaussianBlur in="noise" stdDeviation="3.5" result="smoothNoise" />
+                <feDisplacementMap in="SourceGraphic" in2="smoothNoise" scale="7" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+        </defs>
+    </svg>
+
+    <!-- Ambient Dynamic Wallpaper for Real-Time Glass Lensing -->
+    <div class="ambient-wallpaper" aria-hidden="true">
+        <div class="ambient-orb orb-1"></div>
+        <div class="ambient-orb orb-2"></div>
+        <div class="ambient-orb orb-3"></div>
+    </div>
+
+    <!-- Context & More Menus -->
+    <div id="contextMenu">
+        <div id="spellCtx" style="display:none">
+            <div id="spellCtxItem" class="menu-item lg-interactive"><span class="material-symbols-outlined">spellcheck</span>Chính tả<span class="material-symbols-outlined" style="margin-left:auto">chevron_right</span></div>
+            <hr class="my-1 border-[color:var(--lg-divider)]">
+        </div>
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('undo')"><span class="material-symbols-outlined">undo</span>Hoàn tác</div>
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('redo')"><span class="material-symbols-outlined">redo</span>Làm lại</div>
+        <hr class="my-1 border-[color:var(--lg-divider)]">
+        <div class="menu-item lg-interactive" onclick="toggleFindReplace()"><span class="material-symbols-outlined">search</span>Tìm kiếm & Thay thế</div>
+        <hr class="my-1 border-[color:var(--lg-divider)]">
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('cut')"><span class="material-symbols-outlined">content_cut</span>Cắt</div>
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('copy')"><span class="material-symbols-outlined">content_copy</span>Sao chép</div>
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('paste')"><span class="material-symbols-outlined">content_paste</span>Dán</div>
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('select-all')"><span class="material-symbols-outlined">select_all</span>Chọn tất cả</div>
+    </div>
+
+    <div id="spellSubmenu"></div>
+
+    <div id="moreOptionsMenu">
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('undo')"><span class="material-symbols-outlined">undo</span>Hoàn tác <span class="ml-auto text-[10px] opacity-50">Ctrl+Z</span></div>
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('redo')"><span class="material-symbols-outlined">redo</span>Làm lại <span class="ml-auto text-[10px] opacity-50">Ctrl+Y</span></div>
+        <hr class="my-1 border-[color:var(--lg-divider)]">
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('cut')"><span class="material-symbols-outlined">content_cut</span>Cắt <span class="ml-auto text-[10px] opacity-50">Ctrl+X</span></div>
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('copy')"><span class="material-symbols-outlined">content_copy</span>Sao chép <span class="ml-auto text-[10px] opacity-50">Ctrl+C</span></div>
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('paste')"><span class="material-symbols-outlined">content_paste</span>Dán <span class="ml-auto text-[10px] opacity-50">Ctrl+V</span></div>
+        <div class="menu-item lg-interactive" onclick="handleMenuAction('select-all')"><span class="material-symbols-outlined">select_all</span>Chọn tất cả <span class="ml-auto text-[10px] opacity-50">Ctrl+A</span></div>
+        <hr class="my-1 border-[color:var(--lg-divider)]">
+        <div class="menu-item lg-interactive" onclick="toggleFindReplace()"><span class="material-symbols-outlined">search</span>Tìm kiếm & Thay thế <span class="ml-auto text-[10px] opacity-50">Ctrl+F</span></div>
+        <hr class="my-1 border-[color:var(--lg-divider)]">
+        <div class="menu-item lg-interactive" onclick="toggleSpellCheck(event)">
+            <span class="material-symbols-outlined">spellcheck</span>Kiểm tra chính tả
+            <label class="switch pointer-events-none"><input type="checkbox" id="spellCheckToggle" tabindex="-1"><span class="slider"></span></label>
+        </div>
+        <div class="menu-item lg-interactive" id="spellLangItem" onclick="openSpellDialog()">
+            <span class="material-symbols-outlined">translate</span>
+            <span class="menu-text">Ngôn ngữ kiểm tra<span id="spellLangSummary" class="menu-subtext"></span></span>
+        </div>
+        <div class="menu-item lg-interactive" id="dictItem" onclick="openDictDialog()">
+            <span class="material-symbols-outlined">menu_book</span>
+            <span class="menu-text">Từ điển của tôi<span id="dictSummary" class="menu-subtext"></span></span>
+        </div>
+        <div class="menu-item lg-interactive" id="suggestItem" onclick="openSuggestDialog()">
+            <span class="material-symbols-outlined">auto_fix_high</span>
+            <span class="menu-text">Gợi ý sửa<span id="sugSummary" class="menu-subtext"></span></span>
+        </div>
+        <div class="menu-item lg-interactive" onclick="event.stopPropagation()">
+            <span class="material-symbols-outlined">dark_mode</span>Chế độ tối
+            <select id="themeSelect" class="theme-select" aria-label="Chế độ tối" onchange="setThemeMode(this.value)">
+                <option value="dark">Bật</option>
+                <option value="light">Tắt</option>
+                <option value="system">Hệ thống</option>
+            </select>
+        </div>
+        <div class="menu-item lg-interactive" onclick="restartApp()">
+            <span class="material-symbols-outlined">restart_alt</span>
+            Khởi động lại
+        </div>
+    </div>
+
+    <header class="app-header">
+        <div class="flex items-center gap-2 overflow-hidden flex-shrink-0">
+            <!-- Apple Icon exclusively for Liquid Glass edition -->
+            <div id="brandLogo" class="lg-interactive flex items-center text-[color:var(--lg-text)] mr-1" title="Notepad Liquid Glass">
+                <span id="brandIcon" class="flex-shrink-0 mr-2 text-[color:var(--lg-accent)]" aria-hidden="true">
+                    <svg viewBox="0 0 384 512" width="21" height="21" fill="currentColor">
+                        <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+                    </svg>
+                </span>
+                <span id="brandText" class="font-black text-lg tracking-tight flex items-center gap-1.5">
+                    <svg viewBox="0 0 384 512" width="17" height="17" fill="currentColor" class="text-[color:var(--lg-accent)] -mt-0.5">
+                        <path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+                    </svg>
+                    Notepad
+                </span>
+            </div>
+            
+            <!-- GlassEffectContainer for Primary File Controls -->
+            <div class="glass-effect-container">
+                <button onclick="newFile()" class="action-btn lg-interactive text-[color:var(--lg-danger)]"><md-ripple></md-ripple><span class="material-symbols-outlined">note_add</span><span class="action-label">Tạo tệp mới</span></button>
+                <button onclick="openFile()" class="action-btn lg-interactive"><md-ripple></md-ripple><span class="material-symbols-outlined">file_open</span><span class="action-label">Mở tệp</span></button>
+                <button id="mainSaveBtn" onclick="saveFile()" class="action-btn lg-interactive primary hidden"><md-ripple></md-ripple><span class="material-symbols-outlined">save</span><span class="action-label">Lưu tệp</span></button>
+                <button id="saveAsBtn" onclick="saveFileAs()" class="action-btn lg-interactive primary"><md-ripple></md-ripple><span class="material-symbols-outlined">save_as</span><span class="action-label">Lưu bản mới</span></button>
+            </div>
+
+            <div class="w-[1px] h-5 bg-[color:var(--lg-divider-strong)] mx-1"></div>
+            <input type="text" id="noteTitle" readonly placeholder="Không tên" class="text-sm font-bold outline-none border-none text-left w-24 sm:w-32 lg:w-48 placeholder:text-[color:var(--lg-text-muted)]" autocomplete="off">
+        </div>
+
+        <!-- Markdown Formatting Glass Capsule -->
+        <div id="mdToolbar" class="hidden sm:flex items-center gap-0.5 opacity-0 pointer-events-none">
+            <button onclick="insertMD('**', '**')" class="action-btn lg-interactive !max-w-[36px] text-[color:var(--lg-text-secondary)]"><md-ripple></md-ripple><span class="material-symbols-outlined">format_bold</span></button>
+            <button onclick="insertMD('*', '*')" class="action-btn lg-interactive !max-w-[36px] text-[color:var(--lg-text-secondary)]"><md-ripple></md-ripple><span class="material-symbols-outlined">format_italic</span></button>
+            <button onclick="insertMD('# ', '')" class="action-btn lg-interactive !max-w-[36px] text-[color:var(--lg-text-secondary)]"><md-ripple></md-ripple><span class="material-symbols-outlined">format_size</span></button>
+            <button onclick="insertMD('`', '`')" class="action-btn lg-interactive !max-w-[36px] text-[color:var(--lg-text-secondary)]"><md-ripple></md-ripple><span class="material-symbols-outlined">code</span></button>
+            <button onclick="insertMD('~~','~~')" class="action-btn lg-interactive !max-w-[36px] text-[color:var(--lg-text-secondary)]"><md-ripple></md-ripple><span class="material-symbols-outlined">format_strikethrough</span></button>
+            <button onclick="insertLinePrefix('- ')" class="action-btn lg-interactive !max-w-[36px] text-[color:var(--lg-text-secondary)]"><md-ripple></md-ripple><span class="material-symbols-outlined">format_list_bulleted</span></button>
+            <button onclick="insertLinePrefix('- [ ] ')" class="action-btn lg-interactive !max-w-[36px] text-[color:var(--lg-text-secondary)]"><md-ripple></md-ripple><span class="material-symbols-outlined">check_box</span></button>
+            <button onclick="insertMD('\n---\n','')" class="action-btn lg-interactive !max-w-[36px] text-[color:var(--lg-text-secondary)]"><md-ripple></md-ripple><span class="material-symbols-outlined">horizontal_rule</span></button>
+            <button onclick="insertCodeBlock()" class="action-btn lg-interactive !max-w-[36px] text-[color:var(--lg-text-secondary)]"><md-ripple></md-ripple><span class="material-symbols-outlined">code_blocks</span></button>
+        </div>
+
+        <div class="flex items-center gap-2.5 flex-shrink-0">
+            <div id="saveStatus" class="text-[color:var(--lg-accent)] opacity-0 transition-opacity flex items-center"><span class="material-symbols-outlined text-lg">sync_saved_locally</span></div>
+            <div class="flex items-center gap-2.5">
+                <div id="autoSaveContainer" class="hidden items-center gap-2 px-2.5 py-1 rounded-full bg-[color:var(--lg-glass-pill)] border border-[color:var(--lg-glass-border-bottom)]">
+                    <label class="switch">
+                        <input type="checkbox" id="autoSaveToggle">
+                        <span class="slider"></span>
+                    </label>
+                    <span class="hidden md:inline text-[10px] font-black uppercase tracking-wider text-[color:var(--lg-text-secondary)]">
+                        Auto Save
+                    </span>
+                </div>
+            </div>
+            <div class="w-[1px] h-5 bg-[color:var(--lg-divider-strong)]"></div>
+            <button id="moreOptionsBtn" class="action-btn lg-interactive !max-w-[36px] text-[color:var(--lg-text)]"><md-ripple></md-ripple><span class="material-symbols-outlined">more_horiz</span></button>
+        </div>
+    </header>
+
+    <!-- Find & Replace Bar -->
+    <div id="findReplaceBar">
+        <div class="fr-input-container">
+            <span class="material-symbols-outlined text-[color:var(--lg-text-muted)]">search</span>
+            <input type="text" id="findInput" class="fr-input" placeholder="Tìm kiếm...">
+            <span id="findCount" class="text-[11px] font-bold text-[color:var(--lg-text-muted)] mr-2">0/0</span>
+            <button onclick="findNext(false)" class="p-1 hover:bg-[color:var(--lg-glass-hover)] rounded-full transition-transform active:scale-90"><span class="material-symbols-outlined text-lg">keyboard_arrow_up</span></button>
+            <button onclick="findNext(true)" class="p-1 hover:bg-[color:var(--lg-glass-hover)] rounded-full transition-transform active:scale-90"><span class="material-symbols-outlined text-lg">keyboard_arrow_down</span></button>
+        </div>
+        <div class="fr-input-container">
+            <span class="material-symbols-outlined text-[color:var(--lg-text-muted)]">find_replace</span>
+            <input type="text" id="replaceInput" class="fr-input" placeholder="Thay thế bằng...">
+            <button onclick="replaceOne()" class="fr-pill-btn mr-1">Thay thế</button>
+            <button onclick="replaceAll()" class="fr-pill-btn">Tất cả</button>
+        </div>
+        <button onclick="toggleFindReplace()" class="p-2 hover:bg-[color:var(--lg-glass-hover)] rounded-full transition-transform active:scale-90"><span class="material-symbols-outlined">close</span></button>
+    </div>
+
+    <main id="editorArea">
+        <div class="editor-wrapper">
+            <div id="lineGutter" class="editor-gutter" aria-hidden="true"><div id="lineGutterInner"></div></div>
+            <div id="lineMirror" class="editor-layer editor-mirror" aria-hidden="true"></div>
+            <div id="syntaxLayer" class="editor-layer" aria-hidden="true"></div>
+            <div id="spellLayer" class="editor-layer" aria-hidden="true"></div>
+            <div id="searchHighlights" class="editor-layer" aria-hidden="true"></div>
+            <div id="suggestLayer" class="editor-layer" aria-hidden="true"></div>
+            <div id="suggestActions" class="editor-layer" aria-hidden="false"></div>
+            <textarea id="noteContent" spellcheck="false" placeholder="Bắt đầu viết..."></textarea>
+            <div id="suggestNav">
+                <button id="sgUp" onclick="sgNav(-1)"><span class="material-symbols-outlined">arrow_upward</span><span class="sg-label"><b id="sgUpN">0</b> chỉnh sửa cần được xem xét</span></button>
+                <button id="sgDown" onclick="sgNav(1)"><span class="material-symbols-outlined">arrow_downward</span><span class="sg-label"><b id="sgDownN">0</b> chỉnh sửa cần được xem xét</span></button>
+            </div>
+        </div>
+        <div id="previewPane" class="markdown-body"></div>
+    </main>
+
+    <footer id="statusBar" role="status">
+        <div class="sb-group">
+            <span id="cursorPos" class="sb-item">Dòng 1, Cột 1</span>
+            <span id="lineCount" class="sb-item">1 dòng</span>
+            <span id="wordCount" class="sb-item">0 ký tự • 0 từ</span>
+        </div>
+        <div class="sb-group">
+            <span id="fileTypeLabel" class="sb-item">Văn bản thuần</span>
+        </div>
+    </footer>
+
+    <div id="toast">Thông báo</div>
+    <div id="loading" class="fixed inset-0 flex flex-col items-center justify-center z-[100] hidden">
+        <img src="https://tuanphong3108.github.io/md3-loading/Loading_Indicator.gif" alt="Loading">
+        <p class="mt-4 font-black text-[color:var(--lg-accent)] uppercase tracking-widest text-[10px]">Đang xử lý</p>
+    </div>
+
+    <!-- Auto Save bubble (appears next to the Auto Save switch) -->
+    <div id="autoSavePrompt" role="dialog" aria-label="Auto Save">
+        <div class="bubble-title">Bật Auto Save?</div>
+        <p class="bubble-text">Nội dung sẽ tự động được lưu sau mỗi lần chỉnh sửa để tránh mất dữ liệu.</p>
+        <div class="bubble-actions">
+            <button class="dlg-btn" onclick="closeAutoSavePrompt()">Không</button>
+            <button class="dlg-btn primary" onclick="enableAutoSave()">Bật</button>
+        </div>
+    </div>
+
+    <!-- Personal dictionary dialog -->
+    <div id="dictDialog" class="dlg-overlay" onclick="closeDictDialog()">
+        <div class="dlg-card" role="dialog" aria-modal="true" aria-labelledby="dictTitle" onclick="event.stopPropagation()">
+            <h2 id="dictTitle" class="dlg-title">Từ điển của tôi</h2>
+            <p class="dlg-sub">Các từ ở đây sẽ không bị gạch chân khi kiểm tra chính tả.</p>
+            <div class="dlg-line">
+                <input id="dictInput" class="dlg-search" type="text" placeholder="Thêm một từ..." autocomplete="off" spellcheck="false">
+                <button class="dlg-btn primary" onclick="addDictWord()">Thêm</button>
+            </div>
+            <div id="dictList" class="dlg-list"></div>
+            <div class="dlg-actions">
+                <button class="dlg-btn primary" onclick="closeDictDialog()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- "Gợi ý sửa" dialog -->
+    <div id="suggestDialog" class="dlg-overlay" onclick="closeSuggestDialog()">
+        <div class="dlg-card" role="dialog" aria-modal="true" aria-labelledby="sugTitle" onclick="event.stopPropagation()">
+            <h2 id="sugTitle" class="dlg-title">Gợi ý sửa</h2>
+            <p class="dlg-sub">Gemini định kỳ đọc văn bản quanh con trỏ và đề xuất chỉnh sửa như trong VS Code. API key chỉ lưu trong trình duyệt này; đoạn văn đang soạn sẽ được gửi tới Google khi kiểm tra.</p>
+            <label class="dlg-label" for="sugKey">Gemini API key</label>
+            <div class="dlg-line">
+                <input id="sugKey" class="dlg-search" type="password" placeholder="AIza..." autocomplete="off" spellcheck="false">
+                <button id="sugSave" class="dlg-btn primary" onclick="saveSuggestKey()">Save</button>
+            </div>
+            <div id="sugKeyStatus" class="dlg-meta"></div>
+            <div class="dlg-toggle">
+                <span class="dlg-name">Bật gợi ý sửa</span>
+                <label class="switch"><input type="checkbox" id="sugToggle" disabled><span class="slider"></span></label>
+            </div>
+            <label class="dlg-label" for="sugModel">Mô hình</label>
+            <select id="sugModel" class="dlg-select" disabled></select>
+            <label class="dlg-label" for="sugRpd">Giới hạn lượt gọi mỗi ngày của mô hình (xem trong Google AI Studio)</label>
+            <input id="sugRpd" class="dlg-search" type="number" min="1" step="1" disabled>
+            <div id="sugInfo" class="dlg-info"></div>
+            <div class="dlg-actions">
+                <button class="dlg-btn primary" onclick="closeSuggestDialog()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Spell-check language dialog -->
+    <div id="spellLangDialog" class="dlg-overlay" onclick="closeSpellDialog()">
+        <div class="dlg-card" role="dialog" aria-modal="true" aria-labelledby="spellLangTitle" onclick="event.stopPropagation()">
+            <h2 id="spellLangTitle" class="dlg-title">Ngôn ngữ kiểm tra chính tả</h2>
+            <p class="dlg-sub">Chọn một hoặc nhiều ngôn ngữ. Một từ chỉ bị gạch chân khi sai ở tất cả ngôn ngữ đã chọn.</p>
+            <div id="spellEngineInfo" class="dlg-info"></div>
+            <button id="spellGeminiBtn" class="dlg-btn dlg-inline" style="display:none" onclick="downloadGeminiNano()">Tải Gemini Nano</button>
+            <input id="spellLangFilter" class="dlg-search" type="search" placeholder="Tìm ngôn ngữ..." autocomplete="off">
+            <div id="spellLangList" class="dlg-list"></div>
+            <div class="dlg-actions">
+                <button class="dlg-btn" onclick="closeSpellDialog()">Hủy</button>
+                <button class="dlg-btn primary" onclick="applySpellDialog()">Áp dụng</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        window.NOTEPAD_CONFIG = {
+            defaultTitle: 'Notepad Liquid Glass',
+            newFileName: 'No_name.txt',
+            themeColors: { light: '#EEF2F9', dark: '#090B10', tabbedLight: '#DCE5F5', tabbedDark: '#161924' }
+        };
+
+        // Liquid Glass Touch-Point Illumination (tracks cursor position for specular radial sheen)
+        document.addEventListener('pointermove', (e) => {
+            const target = e.target.closest('.lg-interactive');
+            if (!target) return;
+            const rect = target.getBoundingClientRect();
+            target.style.setProperty('--glow-x', (e.clientX - rect.left) + 'px');
+            target.style.setProperty('--glow-y', (e.clientY - rect.top) + 'px');
+        }, { passive: true });
+    </script>
+    <script src="app.js"></script>
+    
+</body>
+</html>

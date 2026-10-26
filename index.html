@@ -448,10 +448,11 @@
             <div id="spellLayer" class="editor-layer" aria-hidden="true"></div>
             <div id="searchHighlights" class="editor-layer" aria-hidden="true"></div>
             <div id="suggestLayer" class="editor-layer" aria-hidden="true"></div>
+            <div id="suggestActions" class="editor-layer" aria-hidden="false"></div>
             <textarea id="noteContent" spellcheck="false" placeholder="Bắt đầu viết..."></textarea>
-            <div id="suggestBar" role="toolbar" aria-label="Gợi ý sửa">
-                <button class="sg-reject" onclick="rejectSuggestion()"><span class="material-symbols-outlined">close</span>Từ chối</button>
-                <button class="sg-accept" onclick="acceptSuggestion()"><span class="material-symbols-outlined">check</span>Chấp nhận</button>
+            <div id="suggestNav">
+                <button id="sgUp" onclick="sgNav(-1)"><span class="material-symbols-outlined">arrow_upward</span><span class="sg-label"><b id="sgUpN">0</b> chỉnh sửa cần được xem xét</span></button>
+                <button id="sgDown" onclick="sgNav(1)"><span class="material-symbols-outlined">arrow_downward</span><span class="sg-label"><b id="sgDownN">0</b> chỉnh sửa cần được xem xét</span></button>
             </div>
         </div>
         <div id="previewPane" class="markdown-body"></div>
