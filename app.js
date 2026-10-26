@@ -185,7 +185,9 @@
         toast.innerText = msg;
         toast.classList.add('show');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => toast.classList.remove('show'), Math.min(10000, 3000 + String(msg).length * 40));
+        toastTimer = setTimeout(() => { toast.classList.remove('show'); updateNavLift(); }, Math.min(10000, 3000 + String(msg).length * 40));
+        updateNavLift();
+        setTimeout(updateNavLift, 320);      // once the zoom-in animation has finished and the toast has its final size
     }
 
     // The prompt is a chat bubble anchored under the Auto Save switch.
@@ -2222,13 +2224,44 @@
         return out;
     }
 
+    // show: zoom in as a round button, then grow into the pill; hide: shrink to the circle, then zoom out
+    function setNavPill(btn, on) {
+        clearTimeout(btn._t);
+        if (on) {
+            if (!btn.classList.contains('show')) {
+                btn.classList.add('show');
+                btn._t = setTimeout(() => btn.classList.add('expanded'), 230);
+            } else {
+                btn.classList.add('expanded');
+            }
+        } else if (btn.classList.contains('show')) {
+            btn.classList.remove('expanded');
+            btn._t = setTimeout(() => btn.classList.remove('show'), 260);
+        }
+    }
+
     function updateSuggestNav() {
         const o = suggestOffscreen();
         const up = $('sgUp'), down = $('sgDown');
-        up.classList.toggle('open', o.up.length > 0);
-        down.classList.toggle('open', o.down.length > 0);
+        setNavPill(up, o.up.length > 0);
+        setNavPill(down, o.down.length > 0);
         $('sgUpN').textContent = o.up.length;
         $('sgDownN').textContent = o.down.length;
+        updateNavLift();
+    }
+
+    // push the bottom pill up by the height of the toast while the toast is on screen
+    function updateNavLift() {
+        const down = $('sgDown');
+        if (!down || !down.classList.contains('show') || !toast.classList.contains('show')) {
+            suggestNav.style.setProperty('--sg-lift', '0px');
+            return;
+        }
+        const w = editorWrapper.getBoundingClientRect();
+        // layout size, not the on-screen rect: the toast is scaled while it zooms in
+        const toastTop = window.innerHeight - (parseFloat(getComputedStyle(toast).bottom) || 0) - toast.offsetHeight;
+        const lift = Math.max(0, (w.bottom - 12) - (toastTop - 8));
+        suggestNav.style.setProperty('--sg-lift', Math.ceil(lift) + 'px');
     }
 
     function sgNav(dir) {
